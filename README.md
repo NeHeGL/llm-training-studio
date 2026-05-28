@@ -1,5 +1,7 @@
 # LLM Training Studio
 
+**2026 Jeff Molofee (NeHe)**
+
 **NeHe Productions** | Owner: Jeff Molofee (NeHe)  
 Fine-tune a local LLM on your own Q&A training data using LoRA / QLoRA.  
 Default base model: `Qwen/Qwen2.5-7B` (configurable per model in the Studio).
