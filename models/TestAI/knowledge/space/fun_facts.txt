@@ -1,0 +1,44 @@
+Q: How big is the Sun compared to Earth?
+A: The Sun is about 109 times wider than Earth in diameter. You could fit roughly 1.3 million Earths inside the Sun by volume. Despite its enormous size, the Sun is actually a fairly average-sized star — some red giant stars are over 1,000 times larger.
+
+Q: How long does it take light to travel from the Sun to Earth?
+A: Light travels at about 299,792 km/s (186,000 miles/s) and takes approximately 8 minutes and 20 seconds to travel from the Sun to Earth. This means that when you look at the Sun, you're actually seeing what it looked like over 8 minutes ago.
+
+Q: What is a black hole?
+A: A black hole is a region of space where gravity is so intense that nothing — not even light — can escape once it crosses the event horizon. They form when massive stars collapse at the end of their lives. Supermassive black holes, millions to billions of times the mass of our Sun, sit at the centers of most large galaxies.
+
+Q: Is Pluto still a planet?
+A: Pluto was reclassified as a "dwarf planet" by the International Astronomical Union (IAU) in 2006. To be a full planet, a body must orbit the Sun, have enough mass for a roughly spherical shape, and have "cleared the neighborhood" around its orbit. Pluto meets the first two criteria but not the third — it shares its orbital zone with other Kuiper Belt objects.
+
+Q: How many galaxies are in the observable universe?
+A: Estimates suggest there are roughly 2 trillion (2,000,000,000,000) galaxies in the observable universe, based on deep-field images from the Hubble Space Telescope and statistical modeling. The Milky Way alone contains between 100 and 400 billion stars.
+
+Q: What is a neutron star?
+A: A neutron star is the collapsed core of a massive star that exploded in a supernova. They are incredibly dense — a teaspoon of neutron star material would weigh about 10 million tons. Despite being only about 20 km in diameter, they contain more mass than our Sun. Some neutron stars spin hundreds of times per second and are called pulsars.
+
+Q: Could you hear a sound in space?
+A: In the vacuum of space, no — sound requires a medium (like air or water) to travel through. However, NASA has detected actual sound waves propagating through the gas clouds in galaxy clusters and converted them into audio for humans to hear. So space isn't completely silent everywhere.
+
+Q: Why does the Moon have craters but Earth doesn't have as many?
+A: Both the Moon and Earth have been hit by meteorites and asteroids throughout their history, but Earth's craters are erased over time by plate tectonics, erosion, volcanic activity, and weather. The Moon has no atmosphere or geological activity to wear them away, so its craters remain preserved for billions of years.
+
+Q: What is dark matter?
+A: Dark matter is a hypothetical form of matter that doesn't emit, absorb, or reflect light, making it invisible to telescopes. Scientists infer its existence from its gravitational effects on galaxies — galaxies rotate faster than they should given only the visible matter they contain. Dark matter is thought to make up about 27% of the universe's total mass-energy content.
+
+Q: How cold is space?
+A: The background temperature of space (the cosmic microwave background) is about -270.45°C (-454.81°F), just 2.7 degrees above absolute zero. However, temperatures vary enormously — near a star it can be millions of degrees, and in shadowed regions near asteroids it can be extremely close to absolute zero.
+
+Q: What is the Great Red Spot on Jupiter?
+A: The Great Red Spot is a massive, long-lived storm on Jupiter — an anticyclone so large that Earth could fit inside it. It has been observed for at least 350 years. The storm has been shrinking over the past century, but scientists don't fully understand why. Its red color is thought to come from complex organic molecules produced by chemical reactions driven by UV radiation.
+
+Q: How fast is the Earth moving through space?
+A: Earth moves in several ways simultaneously: it rotates at about 1,670 km/h at the equator, orbits the Sun at about 107,000 km/h, the Sun orbits the Milky Way's center at about 828,000 km/h, and the Milky Way itself moves through space at roughly 2.1 million km/h relative to the cosmic microwave background.
+
+Q: What is the Oort Cloud?
+A: The Oort Cloud is a vast, spherical shell of icy bodies surrounding our solar system at distances between 2,000 and 100,000 AU (astronomical units) from the Sun. It's thought to be the source of long-period comets that occasionally fall into the inner solar system. No spacecraft has ever reached it — Voyager 1, the most distant human-made object, would take about 300 years to get there.
+
+Q: What happens when two black holes collide?
+A: When two black holes collide and merge, they release a tremendous amount of energy as gravitational waves — ripples in the fabric of spacetime predicted by Einstein's general relativity. The LIGO detector first directly detected these waves in 2015 from a merger about 1.3 billion light-years away. The collision produces a larger black hole and releases energy equivalent to several solar masses.
+
+Q: Are there any planets outside our solar system?
+A: Yes — as of 2024, over 5,600 exoplanets have been confirmed in our galaxy, with thousands more candidates awaiting verification. The Kepler and TESS space telescopes have been the primary planet hunters. Some exoplanets orbit in the "habitable zone" of their stars where liquid water could exist, making them candidates in the search for extraterrestrial life.

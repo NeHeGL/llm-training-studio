@@ -1,0 +1,3142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="color-scheme" content="dark">
+<title>Studio | LLM Training</title>
+<meta name="description" content="LLM Training Studio — NeHe Productions">
+<meta name="author" content="Jeff Molofee (aka NeHe) — 2026 | AI Assistance: Cline (Claude Sonnet 4.5)">
+<link rel="stylesheet" href="studio.css">
+</head>
+<body>
+<div id="app">
+  <header id="header">
+    <div id="logo">⚡ LLM Training Studio <span style="opacity:0.4;font-weight:400;font-size:1rem;">·</span> <span style="font-size:1rem;font-weight:500;opacity:0.7;">NeHe Productions</span></div>
+    <div id="header-model-pill" style="flex:1;display:flex;justify-content:center;align-items:center;">
+      <div style="background:#1e2a3a;border:1px solid #38bdf833;border-radius:20px;padding:4px 18px;display:flex;align-items:center;gap:8px;">
+        <span style="font-size:0.72rem;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;">Training</span>
+        <span id="header-model-name" style="font-size:0.92rem;font-weight:700;color:#7dd3fc;">—</span>
+      </div>
+    </div>
+    <div id="hdr-right">
+      <span id="count-badge">0 Training Examples</span>
+      <button id="btn-theme" onclick="toggleTheme()" title="Switch to light mode"
+        style="background:none;border:1px solid #1e3a5a;border-radius:7px;padding:5px 10px;cursor:pointer;font-size:1rem;color:#8aa0b8;transition:all 0.15s;line-height:1;">
+        ☀️
+      </button>
+    </div>
+  </header>
+
+  <div id="body">
+
+    <!-- LEFT SIDEBAR: Data tab + Pipeline tab -->
+    <aside id="sidebar">
+      <!-- Sidebar tab bar -->
+      <div id="sidebar-tabs">
+        <div class="stab active" onclick="switchSidebarTab('data', this)">📝 Training Data</div>
+        <div class="stab" onclick="switchSidebarTab('pipeline', this)">🚀 Pipeline</div>
+      </div>
+
+      <!-- DATA TAB: search + example list + editor -->
+      <div id="stab-data" class="sidebar-page active">
+        <div id="sidebar-header">
+          <input id="search" type="text" placeholder="🔍 Search examples..." oninput="filterList()">
+          <button class="btn btn-add" onclick="newExample()">＋ New</button>
+        </div>
+        <div id="example-list"></div>
+        <div id="editor-empty" style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#6b7fa0;gap:10px;text-align:center;padding:24px 16px;">
+          <div style="font-size:1.5rem;">✏️</div>
+          <div style="font-size:0.82rem;color:#64748b;">Select an example to edit,<br>or click <strong style="color:#7dd3fc;">＋ New</strong> to add one.</div>
+        </div>
+        <div id="editor-form" style="display:none;flex-direction:column;gap:12px;padding:12px;border-top:1px solid var(--border);overflow-y:auto;">
+          <div class="form-row">
+            <label>Question / Instruction</label>
+            <textarea id="f-question" rows="4" placeholder="What do you want the AI to answer?"></textarea>
+          </div>
+          <div class="form-row">
+            <label>Answer / Response  <span class="hint">(what the AI should say)</span></label>
+            <textarea id="f-answer" rows="8" placeholder="Write the ideal response here..."></textarea>
+          </div>
+          <div id="editor-actions">
+            <button class="btn btn-danger" onclick="deleteExample()">🗑 Delete</button>
+            <button class="btn btn-secondary" onclick="discardChanges()">↺ Revert</button>
+            <button id="btn-save-example" class="btn btn-primary" onclick="saveExample()">✓ Save</button>
+          </div>
+          <div id="editor-tip">
+            <strong>Tips:</strong>
+            <ul style="margin:4px 0 0 0;padding-left:16px;display:flex;flex-direction:column;gap:3px;">
+              <li>Write the question exactly how a user would ask it.</li>
+              <li>Write the answer as the AI should respond — detailed, accurate, in-character.</li>
+              <li>Add multiple phrasings of the same question for better training.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- PIPELINE TAB: pipeline steps + model settings + updates -->
+      <div id="stab-pipeline" class="sidebar-page">
+        <div style="flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:8px;padding:10px;">
+        <div class="info-card" style="flex-shrink:0;">
+          <div class="info-title">🚀 Training Pipeline</div>
+          <div style="font-size:0.72rem;color:#94a3b8;line-height:1.4;margin-bottom:6px;padding:4px 6px;background:#0d1520;border-radius:5px;border-left:2px solid #334155;">
+            <span style="color:#34d399;font-weight:700;">✓</span> = step already run &amp; output exists on disk &nbsp;·&nbsp; click any step to re-run it
+          </div>
+          <div class="pipeline-step" style="padding:4px 0; border-bottom:1px solid #1e2a3a11;">
+            <button class="btn-run" onclick="saveAndBuild()">
+              <span class="run-icon">💾</span>
+              <span class="run-label">1. Save &amp; Build Dataset</span>
+            </button>
+          </div>
+          <div class="pipeline-step" style="padding:4px 0; border-bottom:1px solid #1e2a3a11; flex-direction:column; gap:4px;">
+            <div style="display:flex;gap:5px;align-items:stretch;">
+              <button class="btn-run" id="btn-run-train" onclick="openTrainConsole(this, false)" style="flex:1;">
+                <span class="run-icon">▶</span>
+                <span class="run-label">2. Train Model (LoRA)</span>
+              </button>
+              <button id="btn-clean-build" title="Delete checkpoints and train from scratch"
+                onclick="openTrainConsole(document.getElementById('btn-run-train'), true)"
+                style="background:#0d1520;border:1px solid #1e2a3a;border-radius:8px;color:#64748b;font-size:0.7rem;cursor:pointer;font-family:inherit;padding:4px 8px;white-space:nowrap;transition:all 0.15s;flex-shrink:0;"
+                onmouseover="this.style.color='#f87171';this.style.borderColor='#f8717155'"
+                onmouseout="this.style.color='#64748b';this.style.borderColor='#1e2a3a'">
+                🗑 Reset
+              </button>
+            </div>
+          </div>
+          <div class="pipeline-step" style="padding:4px 0; border-bottom:1px solid #1e2a3a11; flex-direction:column; gap:5px;">
+            <button class="btn-run" id="btn-run-generate" onclick="openGenerateConsole(this)" style="width:100%;">
+              <span class="run-icon">📦</span>
+              <span class="run-label">3. Export → GGUF</span>
+            </button>
+            <div style="display:flex;align-items:center;gap:6px;padding:0 2px;">
+              <label for="export-gguf-type" style="font-size:0.82rem;color:#94a3b8;white-space:nowrap;flex-shrink:0;">Format:</label>
+              <select id="export-gguf-type" onchange="_updateExportHint(); _updatePipelineSteps();"
+                style="flex:1;background:#0d1520;border:1px solid #1e2a3a;border-radius:5px;padding:3px 6px;font-size:0.82rem;color:#94a3b8;font-family:inherit;outline:none;cursor:pointer;">
+                <option value="auto">Auto (recommended)</option>
+                <option value="f16">f16 — lossless, ~14 GB</option>
+                <option value="q8_0">q8_0 — near-lossless, ~8 GB</option>
+                <option value="q4_k_m">q4_k_m — good quality, ~4 GB</option>
+                <option value="q4_0">q4_0 — smallest, ~4 GB</option>
+              </select>
+            </div>
+            <div id="export-gguf-hint" style="font-size:0.68rem;color:#6b7fa0;line-height:1.4;padding:0 2px;"></div>
+            <div id="export-result-bar" style="display:none;padding:5px 8px;border-radius:5px;font-size:0.72rem;"></div>
+          </div>
+          <div class="pipeline-step" style="padding:4px 0; border-bottom:none;">
+            <button class="btn-run" id="btn-run-chat" onclick="runScript('chat', this)">
+              <span class="run-icon">💬</span>
+              <span class="run-label">4. Test LLM</span>
+            </button>
+          </div>
+          <div id="run-output"></div>
+        </div>
+        <div class="info-card">
+          <div class="info-title">ℹ️ What is Training?</div>
+          <div style="font-size:0.82rem;color:#94a3b8;line-height:1.5;margin-bottom:10px;"><em style="color:#7dd3fc;font-style:normal;">LoRA fine-tuning</em> is the industry standard for customizing LLMs. It produces a <span style="color:#e2e8f0;font-weight:600;">full, standalone model</span> with your knowledge and personality baked in.</div>
+          <div style="display:flex;flex-direction:column;gap:6px;">
+            <div style="display:flex;gap:8px;align-items:flex-start;padding:6px 8px;background:#0d1520;border-radius:6px;border-left:2px solid #334155;">
+              <span style="font-size:0.9rem;flex-shrink:0;">💾</span>
+              <div style="font-size:0.82rem;line-height:1.5;"><span style="color:#94a3b8;font-weight:600;">Step 1 — Save &amp; Build Dataset</span><br><span style="color:#64748b;">Add Q&amp;A pairs in the Training Data tab, then click this to convert everything (manual entries + knowledge files) into ChatML JSONL files for training.</span></div>
+            </div>
+            <div style="display:flex;gap:8px;align-items:flex-start;padding:6px 8px;background:#0d1520;border-radius:6px;border-left:2px solid #334155;">
+              <span style="font-size:0.9rem;flex-shrink:0;">▶</span>
+              <div style="font-size:0.82rem;line-height:1.5;"><span style="color:#94a3b8;font-weight:600;">Step 2 — Train Model (LoRA)</span><br><span style="color:#64748b;">Fine-tunes <em id="pipeline-base-model-note" style="color:#64748b;font-style:normal;">the base model</em> on your GPU. <span id="pipeline-time-estimate">Expect ~10–30 min for a 7B model at 16 GB VRAM.</span></span></div>
+            </div>
+            <div style="display:flex;gap:8px;align-items:flex-start;padding:6px 8px;background:#0d1520;border-radius:6px;border-left:2px solid #334155;">
+              <span style="font-size:0.9rem;flex-shrink:0;">📦</span>
+              <div style="font-size:0.82rem;line-height:1.5;"><span style="color:#94a3b8;font-weight:600;">Step 3 — Export → GGUF</span><br><span style="color:#64748b;">Merges LoRA into <em id="pipeline-base-model-note2" style="color:#64748b;font-style:normal;">the base model</em> and saves a single <code style="background:#1e2a3a;border-radius:3px;padding:1px 4px;color:#7dd3fc;">.gguf</code> file — loads in Ollama, LM Studio, and the built-in chat tester.</span></div>
+            </div>
+            <div style="display:flex;gap:8px;align-items:flex-start;padding:6px 8px;background:#0d1520;border-radius:6px;border-left:2px solid #334155;">
+              <span style="font-size:0.9rem;flex-shrink:0;">💬</span>
+              <div style="font-size:0.82rem;line-height:1.5;"><span style="color:#94a3b8;font-weight:600;">Step 4 — Test LLM</span><br><span style="color:#64748b;">Launches a local chat server so you can talk to your trained model immediately.</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </aside><!-- end #sidebar -->
+
+    <!-- CENTER PANE: consoles -->
+    <main id="center-pane">
+      <div id="center-idle" style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#6b7fa0;gap:16px;text-align:center;padding:40px 20px;">
+        <div style="font-size:2rem;">⚡</div>
+        <div style="font-size:1rem;font-weight:600;color:#64748b;">Ready to train</div>
+        <div style="font-size:0.82rem;color:#6b7fa0;max-width:320px;line-height:1.6;">Add training examples in the <strong style="color:#7dd3fc;">Training Data</strong> tab, then use the <strong style="color:#7dd3fc;">Pipeline</strong> tab to train and export your model.</div>
+      </div>
+      <!-- Training Console -->
+      <div id="train-console" style="display:none;flex-direction:column;flex:1;overflow:hidden;">
+        <div id="train-console-header">
+          <span id="train-console-title">▶ Training Console</span>
+          <button id="btn-train-stop" onclick="stopTraining()" style="display:none;background:#1e1e2e;border:1px solid #f8717144;color:#f87171;border-radius:6px;padding:4px 10px;font-size:0.75rem;cursor:pointer;font-family:inherit;">⏹ Stop</button>
+          <button id="btn-train-close" onclick="closeTrainConsole()" style="background:#1e2a3a;border:1px solid #334155;color:#94a3b8;border-radius:6px;padding:4px 10px;font-size:0.75rem;cursor:pointer;font-family:inherit;">✕ Close</button>
+        </div>
+        <div id="train-log"></div>
+      </div>
+      <!-- Generate Console -->
+      <div id="generate-console" style="display:none;flex-direction:column;flex:1;overflow:hidden;">
+        <div id="generate-console-header">
+          <span id="generate-console-title">▶ Export Console</span>
+          <span id="gc-phase-label" style="flex:1;font-size:0.72rem;color:#64748b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></span>
+          <button id="btn-generate-stop" onclick="stopGenerate()" style="display:none;background:#1e1e2e;border:1px solid #f8717144;color:#f87171;border-radius:6px;padding:4px 10px;font-size:0.75rem;cursor:pointer;font-family:inherit;">⏹ Stop</button>
+          <button id="btn-generate-close" onclick="closeGenerateConsole()" style="background:#1e2a3a;border:1px solid #334155;color:#94a3b8;border-radius:6px;padding:4px 10px;font-size:0.75rem;cursor:pointer;font-family:inherit;">✕ Close</button>
+        </div>
+        <div id="generate-log"></div>
+      </div>
+      <!-- Upgrade Console -->
+      <div id="upgrade-console" style="display:none;flex-direction:column;flex:1;overflow:hidden;">
+        <div id="upgrade-console-header">
+          <span style="flex:1;font-size:0.82rem;font-weight:700;color:#7dd3fc;">⬆ Package Upgrade</span>
+          <button id="btn-upgrade-stop" onclick="stopUpgrade()" style="display:none;background:#1e1e2e;border:1px solid #f8717144;color:#f87171;border-radius:6px;padding:4px 10px;font-size:0.75rem;cursor:pointer;font-family:inherit;">⏹ Stop</button>
+          <button id="btn-upgrade-restart" onclick="restartServer()" class="btn-restart-server" style="display:none;background:#0d2010;border:1px solid #34d39944;color:#34d399;border-radius:6px;padding:4px 10px;font-size:0.75rem;cursor:pointer;font-family:inherit;">🔄 Restart Server</button>
+          <button onclick="closeUpgradeConsole()" style="background:#1e2a3a;border:1px solid #334155;color:#94a3b8;border-radius:6px;padding:4px 10px;font-size:0.75rem;cursor:pointer;font-family:inherit;">✕ Close</button>
+        </div>
+        <div id="upgrade-log" style="flex:1;overflow-y:auto;padding:8px 12px;font-size:0.72rem;font-family:'Consolas','Courier New',monospace;color:#64748b;line-height:1.55;white-space:pre-wrap;word-break:break-all;"></div>
+      </div>
+    </main><!-- end #center-pane -->
+
+    <!-- RIGHT PANEL: System monitor always visible -->
+    <div id="info-panel">
+      <div id="panel-tabs">
+        <div class="ptab active" onclick="switchTab('model', this)">🤖 Model</div>
+        <div class="ptab" onclick="switchTab('system', this)">💻 System</div>
+        <div class="ptab" onclick="switchTab('updates', this)">🔄 Updates</div>
+      </div>
+
+      <!-- Model tab -->
+      <div id="tab-model" class="panel-page active">
+        <div class="info-card" style="flex-shrink:0;">
+          <div class="info-title">🤖 Active Model</div>
+          <div style="display:flex;flex-direction:column;gap:8px;">
+            <select id="model-select" onchange="selectModel(this.value)"
+              style="width:100%;background:#0d1520;border:1px solid #1e2a3a;border-radius:6px;padding:5px 8px;font-size:0.82rem;color:#e2e8f0;font-family:inherit;outline:none;">
+            </select>
+            <div style="display:flex;gap:6px;">
+              <button class="btn btn-add" style="flex:1;font-size:0.75rem;padding:5px 8px;" onclick="showAddModel()">＋ Add</button>
+              <button class="btn btn-danger" style="flex:1;font-size:0.75rem;padding:5px 8px;" onclick="deleteModel()">🗑 Remove</button>
+            </div>
+            <div id="add-model-form" style="display:none;flex-direction:column;gap:6px;border-top:1px solid #1e2a3a;padding-top:8px;margin-top:2px;">
+              <div style="font-size:0.82rem;color:#94a3b8;">New Model Name</div>
+              <input id="new-model-name" type="text" placeholder="e.g. ChefAI"
+                style="width:100%;background:#0d1520;border:1px solid #1e2a3a;border-radius:6px;padding:5px 8px;font-size:0.82rem;color:#e2e8f0;font-family:inherit;outline:none;">
+              <div style="font-size:0.82rem;color:#94a3b8;">Base Model</div>
+              <select id="new-model-base"
+                style="width:100%;background:#0d1520;border:1px solid #1e2a3a;border-radius:6px;padding:5px 8px;font-size:0.78rem;color:#e2e8f0;font-family:inherit;outline:none;">
+                <option value="Qwen/Qwen2.5-7B">Qwen/Qwen2.5-7B</option>
+              </select>
+              <div style="display:flex;gap:6px;">
+                <button class="btn btn-primary" style="flex:1;font-size:0.75rem;padding:5px 8px;" onclick="addModel()">✓ Create</button>
+                <button class="btn btn-secondary" style="flex:1;font-size:0.75rem;padding:5px 8px;" onclick="hideAddModel()">✕</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="info-card" style="flex-shrink:0;">
+          <div class="info-title">📊 Dataset Stats</div>
+          <div class="stat-row"><span>Training Examples</span><span id="stat-total">0</span></div>
+          <div class="stat-row"><span>Knowledge pairs</span><span id="stat-knowledge">—</span></div>
+          <div class="stat-row"><span>Knowledge files</span><span id="stat-files">—</span></div>
+          <div class="stat-row"><span>Avg Q length</span><span id="stat-qlen">—</span></div>
+          <div class="stat-row"><span>Avg A length</span><span id="stat-alen">—</span></div>
+        </div>
+        <div class="info-card">
+          <div class="info-title">⚙️ Model Settings</div>
+          <div style="display:flex; flex-direction:column; gap:8px;">
+            <div>
+              <div style="font-size:0.82rem;color:#94a3b8;margin-bottom:3px;">Base Model</div>
+              <!-- Catalog dropdown — filtered to models that fit user's VRAM -->
+              <select id="cfg-base-model-select" onchange="onCatalogSelect(this.value)"
+                style="width:100%;background:#0d1520;border:1px solid #1e2a3a;border-radius:6px;padding:5px 8px;font-size:0.82rem;color:#e2e8f0;font-family:inherit;outline:none;margin-bottom:4px;">
+                <option value="">— Loading catalog… —</option>
+              </select>
+              <!-- Model description -->
+              <div id="cfg-model-desc" style="font-size:0.82rem;color:#94a3b8;min-height:1.4em;margin-bottom:3px;line-height:1.4;"></div>
+              <!-- Recommended quant for this model on your GPU -->
+              <div id="cfg-quant-note" style="font-size:0.82rem;color:#94a3b8;min-height:1.2em;margin-bottom:3px;"></div>
+              <!-- Hidden input keeps the base model value in sync with the dropdown -->
+              <input id="cfg-base-model" type="hidden">
+            </div>
+          </div>
+        </div>
+        <div class="info-card">
+          <div class="info-title">💬 System Prompt</div>
+          <div style="display:flex; flex-direction:column; gap:8px;">
+            <textarea id="cfg-system-prompt" rows="6" placeholder="You are a helpful AI assistant."
+              style="width:100%;background:#0d1520;border:1px solid #1e2a3a;border-radius:6px;padding:5px 8px;font-size:0.82rem;color:#e2e8f0;font-family:inherit;outline:none;resize:vertical;line-height:1.5;" oninput="_onSystemPromptInput()"></textarea>
+            <button id="btn-save-system-prompt" class="btn btn-primary" style="width:100%;font-size:0.78rem;padding:6px 10px;" onclick="saveModelSettings()" disabled>💾 Save System Prompt</button>
+          </div>
+        </div>
+        <div class="info-card">
+          <div class="info-title">🎛️ Training Settings</div>
+          <div style="display:flex;flex-direction:column;gap:7px;font-size:0.82rem;">
+            <div style="color:#94a3b8;font-size:0.82rem;line-height:1.4;margin-bottom:2px;">Auto-filled based on your GPU. Override if needed.</div>
+            <div style="display:flex;flex-direction:column;gap:2px;">
+              <label style="color:#94a3b8;margin-bottom:2px;">Quantization</label>
+              <select id="ts-quant" onchange="updateVramEstimate(); _updateTimeEstimate(); saveTrainingSettings();" style="width:100%;background:#0d1520;border:1px solid #1e2a3a;border-radius:4px;padding:3px 6px;font-size:0.82rem;color:#e2e8f0;font-family:inherit;outline:none;">
+                <option value="4bit">4-bit QLoRA (recommended)</option>
+                <option value="fp16" disabled>Full FP16 — needs 24+ GB VRAM</option>
+                <option value="bf16" disabled>Full BF16 — needs 24+ GB VRAM (Ampere+)</option>
+              </select>
+              <div id="ts-vram-estimate" style="font-size:0.82rem;color:#94a3b8;margin-top:2px;"></div>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <label style="color:#94a3b8;">Epochs</label>
+              <input id="ts-epochs" type="number" min="1" max="20" value="3" onchange="_debouncedSaveTraining()" oninput="_debouncedSaveTraining()" style="width:60px;background:#0d1520;border:1px solid #1e2a3a;border-radius:4px;padding:2px 6px;font-size:0.82rem;color:#e2e8f0;font-family:inherit;outline:none;text-align:right;">
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <label style="color:#94a3b8;">Batch size</label>
+              <input id="ts-batch" type="number" min="1" max="16" value="2" onchange="_debouncedSaveTraining()" oninput="_debouncedSaveTraining()" style="width:60px;background:#0d1520;border:1px solid #1e2a3a;border-radius:4px;padding:2px 6px;font-size:0.82rem;color:#e2e8f0;font-family:inherit;outline:none;text-align:right;">
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <label style="color:#94a3b8;">Learning rate</label>
+              <select id="ts-lr" onchange="saveTrainingSettings();" style="width:60px;background:#0d1520;border:1px solid #1e2a3a;border-radius:4px;padding:2px 6px;font-size:0.82rem;color:#e2e8f0;font-family:inherit;outline:none;">
+                <option value="5e-5">5e-5</option>
+                <option value="1e-4">1e-4</option>
+                <option value="2e-4" selected>2e-4</option>
+                <option value="5e-4">5e-4</option>
+                <option value="1e-3">1e-3</option>
+              </select>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <label style="color:#94a3b8;">LoRA rank (r)</label>
+              <input id="ts-lora-r" type="number" min="4" max="128" value="16" onchange="_debouncedSaveTraining()" oninput="_debouncedSaveTraining()" style="width:60px;background:#0d1520;border:1px solid #1e2a3a;border-radius:4px;padding:2px 6px;font-size:0.82rem;color:#e2e8f0;font-family:inherit;outline:none;text-align:right;">
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <label style="color:#94a3b8;">Max seq length</label>
+              <input id="ts-seq-len" type="number" min="512" max="8192" step="512" value="2048" onchange="_debouncedSaveTraining()" oninput="_debouncedSaveTraining()" style="width:70px;background:#0d1520;border:1px solid #1e2a3a;border-radius:4px;padding:2px 6px;font-size:0.82rem;color:#e2e8f0;font-family:inherit;outline:none;text-align:right;">
+            </div>
+            <div id="ts-note" style="font-size:0.82rem;color:#94a3b8;line-height:1.4;margin-top:2px;"></div>
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:4px 0;border-top:1px solid #1e2a3a;margin-top:2px;">
+              <input type="checkbox" id="ts-eval-split" onchange="saveTrainingSettings()"
+                style="width:14px;height:14px;accent-color:#38bdf8;cursor:pointer;flex-shrink:0;">
+              <span style="color:#94a3b8;line-height:1.4;">Hold out 5% for overfitting check<br><span style="font-size:0.72rem;color:#6b7fa0;">Trains on 95% of data. Requires 20+ examples.</span></span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <!-- Updates tab -->
+      <div id="tab-updates" class="panel-page">
+        <div class="info-card" style="flex-shrink:0;">
+          <div class="info-title">🔄 Package Updates</div>
+          <div style="font-size:0.82rem;color:#94a3b8;line-height:1.5;margin-bottom:8px;">
+            Check PyPI for newer versions of all dependencies and upgrade with one click.
+            PyTorch is upgraded with the correct CUDA index URL detected from your GPU.
+          </div>
+          <!-- PyTorch index URL — auto-detected from GPU, not shown to user -->
+          <select id="upd-torch-index" style="display:none;">
+            <option value="https://download.pytorch.org/whl/cu128">CUDA 12.8+</option>
+            <option value="https://download.pytorch.org/whl/cu124">CUDA 12.4–12.7</option>
+            <option value="https://download.pytorch.org/whl/cu121">CUDA 12.1–12.3</option>
+            <option value="https://download.pytorch.org/whl/cu118">CUDA 11.8</option>
+            <option value="https://download.pytorch.org/whl/cpu">CPU only</option>
+          </select>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;">
+            <button id="btn-check-updates" class="btn btn-primary" style="font-size:0.72rem;padding:5px 10px;flex:1;" onclick="checkUpdates(this)">
+              Check for Updates
+            </button>
+            <button id="btn-upgrade-all" class="btn btn-secondary" style="font-size:0.72rem;padding:5px 10px;flex:1;" onclick="upgradeAll(this)" disabled title="Run Check for Updates first">
+              Upgrade All
+            </button>
+          </div>
+          <div id="upd-status" style="font-size:0.7rem;color:#6b7fa0;margin-top:6px;display:none;"></div>
+        </div>
+
+        <!-- Package list -->
+        <div class="info-card" style="flex-shrink:0;display:none;" id="upd-pkg-card">
+          <div class="info-title">📦 Installed Packages</div>
+          <div id="upd-pkg-list" style="display:flex;flex-direction:column;gap:3px;"></div>
+        </div>
+
+      </div>
+
+      <!-- System tab -->
+      <div id="tab-system" class="panel-page">
+        <div class="info-card">
+          <div class="info-title">💻 System Analysis</div>
+          <div id="sys-content" style="font-size:0.82rem;color:#94a3b8;">Scanning...</div>
+        </div>
+        <div class="info-card" id="sys-monitor-card">
+          <div class="info-title">📊 Live Monitor</div>
+          <div id="sys-monitor-content" style="display:flex;flex-direction:column;gap:6px;font-size:0.82rem;">
+            <div style="color:#94a3b8;font-size:0.82rem;">Loading...</div>
+          </div>
+        </div>
+        <div class="info-card" id="sys-rec-card" style="display:none;">
+          <div class="info-title">⭐ Recommended Settings</div>
+          <div id="sys-rec-content" style="font-size:0.82rem;color:#94a3b8;"></div>
+        </div>
+        <div class="info-card">
+          <div class="info-title">📖 What These Mean</div>
+          <div style="display:flex;flex-direction:column;gap:7px;font-size:0.82rem;color:#94a3b8;line-height:1.5;">
+            <div><span style="color:#38bdf8;font-weight:600;">4-bit QLoRA</span> — Model weights are compressed to 4 bits. Uses ~0.5 GB per billion params. Works on most GPUs with 6+ GB VRAM. Slightly slower than full precision but produces excellent results.</div>
+            <div><span style="color:#34d399;font-weight:600;">Full BF16/FP16</span> — Model loads at full precision (~2 GB/B params). Faster training, but needs 24+ GB VRAM. Only recommended if your GPU can handle it.</div>
+            <div><span style="color:#e2e8f0;font-weight:600;">Batch size</span> — How many examples are processed together. Larger = faster but uses more VRAM. If you get OOM errors, reduce to 1.</div>
+            <div><span style="color:#e2e8f0;font-weight:600;">Max seq length</span> — Longest Q&amp;A pair (in tokens) the model trains on. 2048 is a good default. Reduce to 1024 if you get OOM errors.</div>
+            <div><span style="color:#e2e8f0;font-weight:600;">Grad checkpointing</span> — Trades speed for memory by recomputing activations instead of storing them. Required for most GPUs under 24 GB.</div>
+          </div>
+        </div>
+      </div><!-- end tab-system -->
+    </div><!-- end #info-panel -->
+  </div><!-- end #body -->
+</div><!-- end #app -->
+
+<div id="toast"></div>
+
+<script>
+const API = 'http://localhost:5001';
+
+// ── SVG Icon constants ────────────────────────────────
+const _ICON_PLAY  = '<svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor"><path d="M3 2.75C3 1.784 4.07 1.2 4.865 1.734l8.25 5.25a1 1 0 0 1 0 1.032l-8.25 5.25C3.07 13.8 3 13.216 3 12.25v-9.5z"/></svg>';
+const _ICON_SPIN  = '<svg width="13" height="13" viewBox="0 0 16 16" fill="none" style="animation:spin 1s linear infinite"><circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="2.5" stroke-dasharray="28" stroke-dashoffset="10" stroke-linecap="round"/></svg>';
+const _ICON_CHECK = '<svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor"><path d="M13.78 4.22a.75.75 0 0 1 0 1.06l-7.25 7.25a.75.75 0 0 1-1.06 0L2.22 9.28a.75.75 0 0 1 1.06-1.06L6 10.94l6.72-6.72a.75.75 0 0 1 1.06 0z"/></svg>';
+const _ICON_CROSS = '<svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor"><path d="M3.72 3.72a.75.75 0 0 1 1.06 0L8 6.94l3.22-3.22a.75.75 0 1 1 1.06 1.06L9.06 8l3.22 3.22a.75.75 0 1 1-1.06 1.06L8 9.06l-3.22 3.22a.75.75 0 0 1-1.06-1.06L6.94 8 3.72 4.78a.75.75 0 0 1 0-1.06z"/></svg>';
+function _setIcon(el, svg) { if (el) el.innerHTML = svg; }
+
+// ── State ─────────────────────────────────────────────
+let examples   = [];   // [{id, question, answer, saved}]
+let currentIdx = -1;
+let nextId     = 1;
+let dirty      = false;
+let _detectedCudaCompute = '';   // e.g. "12.4" — set by loadSystemInfo, used by _autoSelectTorchIndex
+
+// ── Pipeline mutual exclusion ─────────────────────────
+// Tracks which task is currently running so all other buttons are disabled.
+// Values: null | 'build' | 'train' | 'generate' | 'chat'
+let _activePipelineTask = null;
+
+// IDs of all pipeline run buttons (in order).
+const _PIPE_BTN_IDS = ['btn-run-train', 'btn-run-generate', 'btn-run-chat'];
+
+// ── Pipeline step sequencing ──────────────────────────
+// Checks which steps have been completed (dataset/lora/gguf on disk) and
+// enables/disables buttons accordingly. Step 1 is always enabled.
+// Step 2 requires dataset. Step 3 requires training done. Step 4 requires GGUF.
+// Last known pipeline state — updated every time _updatePipelineSteps() runs.
+// Used by openTrainConsole to block launching training when it's already 100% done.
+let _pipelineState = { dataset_built: false, training_done: false, export_done: false };
+
+async function _updatePipelineSteps() {
+  try {
+    const ggufTypeSel = document.getElementById('export-gguf-type');
+    const ggufTypeVal = ggufTypeSel ? ggufTypeSel.value : 'auto';
+    const r = await fetch(API + '/pipeline-state?gguf_type=' + encodeURIComponent(ggufTypeVal));
+    if (!r.ok) return;
+    const s = await r.json();
+    // Cache the latest pipeline state so openTrainConsole can check training_done
+    _pipelineState = s;
+
+    // If the LoRA was trained on a different base model, warn the user once
+    if (s.base_model_mismatch) {
+      toast('⚠ Base model changed — existing LoRA is from a different model. Re-train to use the new base model.', 'error');
+    }
+
+    const btnTrain    = document.getElementById('btn-run-train');
+    const btnClean    = document.getElementById('btn-clean-build');
+    const btnGenerate = document.getElementById('btn-run-generate');
+    const btnChat     = document.getElementById('btn-run-chat');
+
+    // Step 1 (Save & Build Dataset) — show checkmark + update label if dataset exists on disk
+    const buildBtn = document.querySelector('#stab-pipeline .btn-run:first-of-type') ||
+                     document.querySelector('.pipeline-step .btn-run');
+    if (buildBtn && !_activePipelineTask) {
+      const buildIcon  = buildBtn.querySelector('.run-icon');
+      const buildLabel = buildBtn.querySelector('.run-label');
+      if (s.dataset_built) {
+        // Only add success state if the button isn't already in a running/success/failed state
+        if (!buildBtn.classList.contains('running') && !buildBtn.classList.contains('success')) {
+          buildBtn.classList.add('success');
+          if (buildIcon) _setIcon(buildIcon, _ICON_CHECK);
+        }
+        if (buildLabel && !buildBtn.classList.contains('running')) {
+          buildLabel.textContent = '1. Rebuild Dataset';
+        }
+      } else {
+        // Dataset gone (e.g. Reset) — revert to default state
+        if (!buildBtn.classList.contains('running')) {
+          buildBtn.classList.remove('success', 'failed');
+          if (buildIcon) buildIcon.innerHTML = '💾';
+          if (buildLabel) buildLabel.textContent = '1. Save & Build Dataset';
+        }
+      }
+    }
+
+    // While a task is running we don't touch the locked state — _setPipelineRunning handles that.
+    if (_activePipelineTask) return;
+
+    // Step 2 (Train) — requires dataset built; show checkmark + update label if training done
+    if (btnTrain) {
+      if (s.dataset_built) {
+        btnTrain.classList.remove('pipe-disabled');
+        btnTrain.title = '';
+      } else {
+        btnTrain.classList.add('pipe-disabled');
+        btnTrain.title = 'Run Step 1 (Save & Build Dataset) first';
+      }
+      // Show checkmark + update label if training is done (and button isn't currently running)
+      if (!btnTrain.classList.contains('running')) {
+        const trainIcon  = btnTrain.querySelector('.run-icon');
+        const trainLabel = btnTrain.querySelector('.run-label');
+        if (s.training_done) {
+          btnTrain.classList.add('success');
+          if (trainIcon) _setIcon(trainIcon, _ICON_CHECK);
+          if (trainLabel) trainLabel.textContent = '2. Retrain Model';
+        } else {
+          btnTrain.classList.remove('success', 'failed');
+          if (trainIcon) _setIcon(trainIcon, _ICON_PLAY);
+          if (trainLabel) trainLabel.textContent = '2. Train Model (LoRA)';
+        }
+      }
+    }
+    if (btnClean) {
+      btnClean.disabled = !s.dataset_built;
+      btnClean.title = s.dataset_built ? '' : 'Run Step 1 first';
+    }
+
+    // Step 3 (Export) — enabled when training is done OR when a GGUF already exists.
+    // training_done = adapter_config.json exists at the LoRA subdir root.
+    // export_done   = a .gguf file exists in the gguf/ folder.
+    // If the GGUF exists (export_done), the button is always re-runnable — the user
+    // may want to re-export after tweaking settings even without retraining.
+    if (btnGenerate) {
+      if (s.training_done || s.export_done) {
+        btnGenerate.classList.remove('pipe-disabled');
+        btnGenerate.title = '';
+      } else {
+        btnGenerate.classList.add('pipe-disabled');
+        btnGenerate.title = 'Run Step 2 (Train Model) first';
+      }
+      // Show checkmark + update label if export is done (and button isn't currently running)
+      if (!btnGenerate.classList.contains('running')) {
+        const genIcon  = btnGenerate.querySelector('.run-icon');
+        const genLabel = btnGenerate.querySelector('.run-label');
+        if (s.export_done) {
+          btnGenerate.classList.add('success');
+          if (genIcon) _setIcon(genIcon, _ICON_CHECK);
+          if (genLabel) genLabel.textContent = '3. Re-export GGUF';
+        } else {
+          btnGenerate.classList.remove('success', 'failed');
+          if (genIcon) genIcon.innerHTML = '📦';
+          if (genLabel) genLabel.textContent = '3. Export → GGUF';
+        }
+      }
+      // Show or hide the export result bar based on export_done state.
+      // When export_done=true and a GGUF name is available, show the Ollama run command.
+      // This mirrors the Test LLM button — visible only when a GGUF exists for this model.
+      const _bar = document.getElementById('export-result-bar');
+      if (_bar && !_generateEvtSource) {  // don't overwrite bar during an active export
+        if (s.export_done && s.gguf_name) {
+          const _ollamaTag = escHtml(s.gguf_name.replace(/\.gguf$/i, '').toLowerCase());
+          _bar.style.display = 'block';
+          _bar.style.background = '#0d201a';
+          _bar.style.border = '1px solid #10b98144';
+          _bar.style.color = '#34d399';
+          _bar.innerHTML =
+            '✅ GGUF ready.<br>' +
+            '<span style="color:#64748b;">Load in Ollama: <code style="color:#7dd3fc;">ollama run ' + _ollamaTag + '</code></span><br>' +
+            '<span style="color:#64748b;">Or click the <strong>Test LLM</strong> button below.</span>';
+        } else if (!s.export_done) {
+          _bar.style.display = 'none';
+        }
+      }
+    }
+
+    // Step 4 (Test LLM) — requires GGUF exported; show checkmark if GGUF exists
+    if (btnChat) {
+      if (s.export_done) {
+        btnChat.classList.remove('pipe-disabled');
+        btnChat.title = '';
+        // Show checkmark when GGUF is ready (button isn't currently running)
+        if (!btnChat.classList.contains('running')) {
+          const chatIcon  = btnChat.querySelector('.run-icon');
+          const chatLabel = btnChat.querySelector('.run-label');
+          btnChat.classList.add('success');
+          if (chatIcon) _setIcon(chatIcon, _ICON_CHECK);
+          if (chatLabel) chatLabel.textContent = '4. Test LLM';
+        }
+      } else {
+        btnChat.classList.add('pipe-disabled');
+        btnChat.title = 'Run Step 3 (Export → GGUF) first';
+        if (!btnChat.classList.contains('running')) {
+          const chatIcon  = btnChat.querySelector('.run-icon');
+          const chatLabel = btnChat.querySelector('.run-label');
+          btnChat.classList.remove('success', 'failed');
+          if (chatIcon) chatIcon.innerHTML = '💬';
+          if (chatLabel) chatLabel.textContent = '4. Test LLM';
+        }
+      }
+    }
+  } catch (e) {
+    // Server offline — leave buttons as-is
+  }
+}
+
+/**
+ * Lock or unlock the pipeline buttons.
+ *
+ * @param {string|null} task   - The task now running ('build'|'train'|'generate'|'chat'), or null to unlock all.
+ * @param {Element|null} activeBtn - The button element for the running task (gets .running; others get .pipe-disabled).
+ */
+function _setPipelineRunning(task, activeBtn) {
+  _activePipelineTask = task;
+
+  // The Save & Build button is a .btn-run but has no stable ID — grab it by position
+  const buildBtn = document.querySelector('#stab-pipeline .btn-run:first-of-type') ||
+                   document.querySelector('.pipeline-step .btn-run');
+
+  const allBtns = [
+    buildBtn,
+    document.getElementById('btn-run-train'),
+    document.getElementById('btn-run-generate'),
+    document.getElementById('btn-run-chat'),
+  ].filter(Boolean);
+
+  // Also lock/unlock the Reset (clean build) button
+  const cleanBtn = document.getElementById('btn-clean-build');
+
+  // Also lock/unlock the GGUF format dropdown — only disable it during export (Step 3),
+  // not during training. The user should be able to change the format while training runs.
+  const ggufSel = document.getElementById('export-gguf-type');
+
+  if (task) {
+    // Lock all buttons; the active one stays un-greyed (it shows .running via its own code)
+    allBtns.forEach(b => {
+      if (b !== activeBtn) b.classList.add('pipe-disabled');
+    });
+    if (cleanBtn) {
+      cleanBtn.disabled = true;
+      cleanBtn.style.opacity = '0.35';
+      cleanBtn.style.cursor = 'not-allowed';
+      cleanBtn.style.pointerEvents = 'none';
+    }
+    // Disable format dropdown only during export (Step 3)
+    if (ggufSel) {
+      ggufSel.disabled = (task === 'generate');
+      ggufSel.style.opacity = (task === 'generate') ? '0.4' : '';
+      ggufSel.style.cursor  = (task === 'generate') ? 'not-allowed' : '';
+    }
+  } else {
+    // Unlock all
+    allBtns.forEach(b => b.classList.remove('pipe-disabled'));
+    if (cleanBtn) {
+      cleanBtn.disabled = false;
+      cleanBtn.style.opacity = '';
+      cleanBtn.style.cursor = '';
+      cleanBtn.style.pointerEvents = '';
+    }
+    if (ggufSel) {
+      ggufSel.disabled = false;
+      ggufSel.style.opacity = '';
+      ggufSel.style.cursor  = '';
+    }
+  }
+}
+
+// ── Load from server ──────────────────────────────────
+async function loadDataset() {
+  try {
+    const r = await fetch(API + '/examples');
+    if (!r.ok) throw new Error('Server not running');
+    const data = await r.json();
+    examples = data.map((ex, i) => ({ id: nextId++, question: ex.question, answer: ex.answer, saved: true }));
+    currentIdx = -1;
+    dirty = false;
+    renderList();
+    showEmpty();
+    updateStats();
+    if (document._datasetLoadedOnce) {
+      toast('Dataset loaded — ' + examples.length + ' examples', 'success');
+    }
+    document._datasetLoadedOnce = true;
+  } catch (e) {
+    // File mode fallback — load from localStorage
+    const stored = localStorage.getItem('popai_examples');
+    if (stored) {
+      try {
+        const data = JSON.parse(stored);
+        examples = data.map(ex => ({ id: nextId++, question: ex.question, answer: ex.answer, saved: true }));
+        renderList(); updateStats();
+        toast('Loaded from local storage (' + examples.length + ' examples)', 'success');
+      } catch {}
+    } else {
+      toast('Server not running — using local storage. Start: python train/server.py', 'error');
+    }
+  }
+}
+
+// ── Save to server ────────────────────────────────────
+async function saveToServer() {
+  const payload = examples.map(ex => ({ question: ex.question, answer: ex.answer }));
+  const r = await fetch(API + '/examples', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+  if (!r.ok) throw new Error('Save failed');
+  return await r.json();
+}
+
+async function saveAndBuild() {
+  // Guard: block if any pipeline task is running
+  if (_activePipelineTask) {
+    toast('A task is already running — please wait for it to finish', 'error');
+    return;
+  }
+
+  // Guard: require at least some data before building
+  const knowledgePairs = parseInt(document.getElementById('stat-knowledge').textContent) || 0;
+  if (examples.length === 0 && knowledgePairs === 0) {
+    toast('⚠ No training data yet — add examples in the Training Data tab, or add files to the knowledge/ folder first', 'error');
+    return;
+  }
+
+  // Lock the pipeline — find the build button to highlight it
+  const buildBtn = document.querySelector('#stab-pipeline .btn-run:first-of-type') ||
+                   document.querySelector('.pipeline-step .btn-run');
+  if (buildBtn) {
+    buildBtn.classList.add('running');
+    _setIcon(buildBtn.querySelector('.run-icon'), _ICON_SPIN);
+  }
+  _setPipelineRunning('build', buildBtn);
+
+  try {
+    await saveToServer();
+    localStorage.setItem('popai_examples', JSON.stringify(
+      examples.map(e => ({ question: e.question, answer: e.answer }))
+    ));
+    examples.forEach(e => e.saved = true);
+    renderList();
+    dirty = false;
+
+    const r2 = await fetch(API + '/build', { method: 'POST' });
+    const j  = await r2.json();
+    let msg = '✓ Built dataset — ' + (j.count || examples.length) + ' examples';
+    if (j.mem_added > 0) msg += ' (+ ' + j.mem_added + ' from memory)';
+    // Unlock pipeline & mark success
+    if (buildBtn) {
+      buildBtn.classList.remove('running');
+      buildBtn.classList.add('success');
+      _setIcon(buildBtn.querySelector('.run-icon'), _ICON_CHECK);
+      const buildLabel = buildBtn.querySelector('.run-label');
+      if (buildLabel) buildLabel.textContent = '1. Rebuild Dataset';
+    }
+    _setPipelineRunning(null, null);
+    _updatePipelineSteps();
+    toast(msg, 'success');
+    // Show sanity check warnings (duplicates, empty Q/A, too-long pairs)
+    if (j.warnings && j.warnings.length > 0) {
+      j.warnings.forEach(w => toast('⚠ ' + w, 'error'));
+    }
+  } catch (e) {
+    // Fallback: save to localStorage only
+    localStorage.setItem('popai_examples', JSON.stringify(
+      examples.map(ex => ({ question: ex.question, answer: ex.answer }))
+    ));
+    examples.forEach(e => e.saved = true);
+    renderList();
+    // Unlock pipeline & mark failure
+    if (buildBtn) {
+      buildBtn.classList.remove('running');
+      buildBtn.classList.add('failed');
+      _setIcon(buildBtn.querySelector('.run-icon'), _ICON_CROSS);
+    }
+    _setPipelineRunning(null, null);
+    toast('Saved locally (server offline). Start train/server.py to write dataset files.', 'error');
+  }
+}
+
+// ── List rendering ────────────────────────────────────
+function renderList(filter = '') {
+  const list = document.getElementById('example-list');
+  list.innerHTML = '';
+  const q = filter.toLowerCase();
+  examples.forEach((ex, i) => {
+    if (q && !ex.question.toLowerCase().includes(q) && !ex.answer.toLowerCase().includes(q)) return;
+    const div = document.createElement('div');
+    div.className = 'ex-item' + (i === currentIdx ? ' active' : '') + (!ex.saved ? ' unsaved' : '');
+    div.onclick = () => selectExample(i);
+    div.innerHTML = `
+      <div class="ex-q">${escHtml(ex.question || '(empty question)')}</div>
+      <div class="ex-meta">${ex.answer ? ex.answer.length + ' chars' : 'no answer'} ${ex.saved ? '' : '● unsaved'}</div>
+    `;
+    list.appendChild(div);
+  });
+  document.getElementById('count-badge').textContent = examples.length + ' Training Example' + (examples.length !== 1 ? 's' : '');
+}
+
+function filterList() {
+  renderList(document.getElementById('search').value);
+}
+
+// ── Editor ────────────────────────────────────────────
+function _updateSaveBtn() {
+  const btn = document.getElementById('btn-save-example');
+  if (!btn) return;
+  // New (unsaved) examples: currentIdx points to an entry with saved=false
+  const isNew = currentIdx >= 0 && !examples[currentIdx].saved;
+  btn.textContent = isNew ? '✓ Save' : '✓ Update';
+}
+
+function selectExample(i) {
+  if (dirty && !confirm('You have unsaved changes. Discard them?')) return;
+  currentIdx = i;
+  dirty = false;
+  const ex = examples[i];
+  document.getElementById('f-question').value = ex.question;
+  document.getElementById('f-answer').value   = ex.answer;
+  showForm();
+  _updateSaveBtn();
+  renderList(document.getElementById('search').value);
+}
+
+function newExample() {
+  if (dirty && !confirm('You have unsaved changes. Discard them?')) return;
+  examples.push({ id: nextId++, question: '', answer: '', saved: false });
+  currentIdx = examples.length - 1;
+  dirty = false;
+  document.getElementById('f-question').value = '';
+  document.getElementById('f-answer').value   = '';
+  showForm();
+  _updateSaveBtn();
+  renderList();
+  document.getElementById('f-question').focus();
+}
+
+async function saveExample() {
+  const q = document.getElementById('f-question').value.trim();
+  const a = document.getElementById('f-answer').value.trim();
+  if (!q) { toast('Question cannot be empty', 'error'); return; }
+  if (!a) { toast('Answer cannot be empty', 'error');   return; }
+  examples[currentIdx].question = q;
+  examples[currentIdx].answer   = a;
+  dirty = false;
+  // Auto-save to server immediately so it persists on reload
+  try {
+    await saveToServer();
+    examples[currentIdx].saved = true;
+    localStorage.setItem('popai_examples', JSON.stringify(
+      examples.map(e => ({ question: e.question, answer: e.answer }))
+    ));
+    renderList(document.getElementById('search').value);
+    updateStats();
+    toast('Saved to manual_entries.txt', 'success');
+  } catch (e) {
+    examples[currentIdx].saved = false;
+    renderList(document.getElementById('search').value);
+    updateStats();
+    toast('Saved locally (server offline)', 'error');
+  }
+}
+
+async function deleteExample() {
+  if (!confirm('Delete this example?')) return;
+  examples.splice(currentIdx, 1);
+  currentIdx = -1;
+  dirty = false;
+  renderList();
+  showEmpty();
+  updateStats();
+  try {
+    await saveToServer();
+    localStorage.setItem('popai_examples', JSON.stringify(
+      examples.map(e => ({ question: e.question, answer: e.answer }))
+    ));
+    toast('Entry deleted', 'success');
+  } catch (e) {
+    toast('Deleted locally (server offline)', 'error');
+  }
+}
+
+function discardChanges() {
+  if (currentIdx >= 0) {
+    document.getElementById('f-question').value = examples[currentIdx].question;
+    document.getElementById('f-answer').value   = examples[currentIdx].answer;
+  }
+  dirty = false;
+  toast('Changes discarded');
+}
+
+// ── Show/hide editor vs empty ─────────────────────────
+function showForm() {
+  document.getElementById('editor-empty').style.display = 'none';
+  document.getElementById('editor-form').style.display  = 'flex';
+}
+function showEmpty() {
+  document.getElementById('editor-empty').style.display = 'flex';
+  document.getElementById('editor-form').style.display  = 'none';
+}
+
+// ── Stats ─────────────────────────────────────────────
+function updateStats() {
+  document.getElementById('stat-total').textContent = examples.length;
+  if (examples.length === 0) {
+    document.getElementById('stat-qlen').textContent = '—';
+    document.getElementById('stat-alen').textContent = '—';
+    return;
+  }
+  const avgQ = Math.round(examples.reduce((s, e) => s + e.question.length, 0) / examples.length);
+  const avgA = Math.round(examples.reduce((s, e) => s + e.answer.length,   0) / examples.length);
+  document.getElementById('stat-qlen').textContent = avgQ + ' chars';
+  document.getElementById('stat-alen').textContent = avgA + ' chars';
+}
+
+async function loadKnowledgeStats() {
+  try {
+    // Use cached GET endpoint — avoids re-scanning 86 files on every page load
+    const r = await fetch(API + '/knowledge-stats');
+    const j = await r.json();
+    if (!j.error) {
+      document.getElementById('stat-knowledge').textContent = (j.added || 0).toLocaleString();
+      document.getElementById('stat-files').textContent = (j.files || 0);
+      if (j.avg_q != null) document.getElementById('stat-qlen').textContent = j.avg_q + ' chars';
+      if (j.avg_a != null) document.getElementById('stat-alen').textContent = j.avg_a + ' chars';
+    }
+  } catch (e) { /* server offline — stats stay as — */ }
+}
+
+// ── Run pipeline scripts ──────────────────────────────
+let runningScript = null;
+
+async function runScript(script, btn) {
+  // Block if any pipeline task is already running
+  if (_activePipelineTask) {
+    toast('A task is already running — please wait for it to finish', 'error');
+    return;
+  }
+  if (runningScript) {
+    toast('A script is already running — please wait', 'error');
+    return;
+  }
+
+  const labels = { train: 'train.py', generate: 'generate_llm.py', chat: 'test/server.py' };
+  const out = document.getElementById('run-output');
+
+  // Reset only the button being clicked — leave other pipeline buttons intact
+  // (wiping all buttons would clear green checkmarks from completed steps)
+  btn.classList.remove('running', 'success', 'failed');
+  btn.classList.add('running');
+  _setIcon(btn.querySelector('.run-icon'), _ICON_SPIN);
+  out.className = 'visible';
+  out.textContent = '⏳ Running ' + labels[script] + '…';
+  runningScript = script;
+  _setPipelineRunning(script, btn);
+
+  try {
+    const r = await fetch(API + '/run/' + script, { method: 'POST' });
+    const j = await r.json();
+
+    btn.classList.remove('running');
+    _setIcon(btn.querySelector('.run-icon'), _ICON_PLAY);
+    runningScript = null;
+    _setPipelineRunning(null, null);
+    _updatePipelineSteps();
+
+    if (j.error) {
+      btn.classList.add('failed');
+      _setIcon(btn.querySelector('.run-icon'), _ICON_CROSS);
+      out.className = 'visible error';
+      out.textContent = '✖ Error: ' + j.error;
+      toast('Script error — see output below', 'error');
+      return;
+    }
+
+    const succeeded = j.returncode === 0;
+    btn.classList.add(succeeded ? 'success' : 'failed');
+    _setIcon(btn.querySelector('.run-icon'), succeeded ? _ICON_CHECK : _ICON_CROSS);
+    out.className = 'visible ' + (succeeded ? 'success' : 'error');
+
+    const combined = [
+      j.stdout ? j.stdout.trim() : '',
+      j.stderr ? '--- stderr ---\n' + j.stderr.trim() : ''
+    ].filter(Boolean).join('\n\n');
+    out.textContent = combined || (succeeded ? '✓ Done (no output)' : '✖ Failed (no output)');
+    out.scrollTop = out.scrollHeight;
+
+    if (script === 'chat' && j.chat_url) {
+      // Open chat in a named window so repeated clicks reuse the same tab
+      window.open(j.chat_url, 'llm-chat-window');
+    } else if (succeeded) {
+      toast('✓ ' + labels[script] + ' completed successfully', 'success');
+    } else {
+      toast('✖ ' + labels[script] + ' exited with code ' + j.returncode, 'error');
+    }
+  } catch (e) {
+    btn.classList.remove('running');
+    btn.classList.add('failed');
+    _setIcon(btn.querySelector('.run-icon'), _ICON_CROSS);
+    out.className = 'visible error';
+    out.textContent = '✖ Could not reach server: ' + e.message;
+    runningScript = null;
+    _setPipelineRunning(null, null);
+    toast('Server unreachable — is train/server.py running?', 'error');
+  }
+}
+
+// ── Dirty tracking ────────────────────────────────────
+['f-question','f-answer'].forEach(id => {
+  document.getElementById(id).addEventListener('input', () => { dirty = true; });
+});
+
+// ── Toast ─────────────────────────────────────────────
+let toastTimer;
+function toast(msg, type = '') {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'show' + (type ? ' ' + type : '');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { el.className = ''; }, 3000);
+}
+
+// ── Helpers ───────────────────────────────────────────
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ── System Prompt change tracking ────────────────────
+// Tracks the last-saved system prompt value so we can enable/disable the
+// Save System Prompt button only when there is actually a pending change.
+let _savedSystemPrompt = '';
+
+function _onSystemPromptInput() {
+  const btn = document.getElementById('btn-save-system-prompt');
+  if (!btn) return;
+  // Compare trimmed values so that adding/removing trailing whitespace doesn't
+  // trigger a false "changed" state — mirrors the .trim() in saveModelSettings().
+  const current = document.getElementById('cfg-system-prompt').value.trim();
+  btn.disabled = (current === _savedSystemPrompt);
+}
+
+// Debounced autosave helpers — prevent rapid typing/spinning from spamming the server.
+// Dropdowns (onchange) call save directly; number inputs and textareas use these.
+let _saveModelTimer = null;
+function _debouncedSaveModel() {
+  clearTimeout(_saveModelTimer);
+  _saveModelTimer = setTimeout(saveModelSettings, 800);
+}
+
+let _saveTrainingTimer = null;
+function _debouncedSaveTraining() {
+  clearTimeout(_saveTrainingTimer);
+  _saveTrainingTimer = setTimeout(saveTrainingSettings, 800);
+}
+
+// ── Multi-model management ────────────────────────────
+let _allModels = [];
+let _activeModel = '';
+
+async function loadModels() {
+  try {
+    const r = await fetch(API + '/models');
+    if (!r.ok) return;
+    const j = await r.json();
+    _allModels = j.models || [];
+    _activeModel = j.active || '';
+    const sel = document.getElementById('model-select');
+    sel.innerHTML = '';
+    _allModels.forEach(name => {
+      const opt = document.createElement('option');
+      opt.value = name;
+      opt.textContent = name;
+      if (name === _activeModel) opt.selected = true;
+      sel.appendChild(opt);
+    });
+    _updateHeaderName(_activeModel);
+    // Load active model settings
+    await loadModelFields();
+  } catch (e) { /* server offline */ }
+}
+
+function _updateHeaderName(name) {
+  document.getElementById('header-model-name').textContent = name || '—';
+  document.title = (name ? name + ' ' : '') + 'LLM Training Studio — NeHe Productions';
+}
+
+// Reset the center pane to idle when switching models (if nothing is running).
+// Leaves the console visible if training/export/upgrade is actively in progress.
+function _resetCenterPaneForModelSwitch() {
+  if (_activePipelineTask || _trainEvtSource || _generateEvtSource || _upgradeEvtSource) return;
+  // Hide all consoles and show the idle state
+  ['train-console', 'generate-console', 'upgrade-console'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = 'none';
+  });
+  document.getElementById('center-idle').style.display = 'flex';
+  // Clear the train log so stale output from the previous model isn't shown
+  const trainLog = document.getElementById('train-log');
+  if (trainLog) trainLog.innerHTML = '';
+  _tcProgressSpan = null;
+  _tcLastFrozenLabel = null;
+  // Clear the generate log so stale export output from the previous model isn't shown
+  const genLog = document.getElementById('generate-log');
+  if (genLog) genLog.innerHTML = '';
+  _gcProgressSpan = null;
+  _gcLastFrozenLabel = null;
+  _gcFallbackWarnShown = false;
+}
+
+async function selectModel(name) {
+  try {
+    const r = await fetch(API + '/models/select', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name })
+    });
+    if (!r.ok) { toast('Failed to switch model', 'error'); return; }
+    _activeModel = name;
+    _updateHeaderName(name);
+    toast('Switched to ' + name, 'success');
+    // Clear stale console output from the previous model
+    _resetCenterPaneForModelSwitch();
+    // Reload examples and stats for new model
+    await loadDataset();
+    loadKnowledgeStats();
+    await loadModelFields();
+    // Re-check pipeline state for the new model — clears ✓ from previous model
+    await _updatePipelineSteps();
+  } catch (e) {
+    toast('Server offline', 'error');
+  }
+}
+
+async function loadModelFields() {
+  try {
+    const r = await fetch(API + '/models/detail?name=' + encodeURIComponent(_activeModel));
+    if (r.ok) {
+      const m = await r.json();
+      document.getElementById('cfg-base-model').value    = m.base_model    || '';
+      document.getElementById('cfg-system-prompt').value = m.system_prompt || '';
+      // Sync the saved-prompt baseline so the Save button stays disabled until changed.
+      // Trim matches the .trim() in _onSystemPromptInput and saveModelSettings so that
+      // leading/trailing whitespace differences never cause a false "changed" state.
+      _savedSystemPrompt = (m.system_prompt || '').trim();
+      const _savePromptBtn = document.getElementById('btn-save-system-prompt');
+      if (_savePromptBtn) _savePromptBtn.disabled = true;
+      const bm = m.base_model || '';
+      const shortBm = bm ? (bm.includes('/') ? bm.split('/').pop() : bm) : 'the base model';
+      const note1 = document.getElementById('pipeline-base-model-note');
+      const note2 = document.getElementById('pipeline-base-model-note2');
+      if (note1) note1.textContent = shortBm;
+      if (note2) note2.textContent = shortBm;
+      _updateTimeEstimate();
+      // Apply saved training settings if present — these take priority over system defaults.
+      // If no saved settings exist, system defaults (set by _applySystemTrainingDefaults)
+      // remain in place. This ensures first-run always gets smart GPU-based defaults.
+      if (m.train_settings && Object.keys(m.train_settings).length > 0) {
+        _applyTrainingSettings(m.train_settings);
+      }
+      // Sync catalog dropdown to the loaded base model.
+      // If the model has no base_model set yet, auto-select the system-recommended model.
+      if (_catalogData) {
+        _buildCatalogDropdown(_catalogData);
+        if (!bm && _catalogData.recommended_base) {
+          // No base model saved — auto-select the recommended one
+          _autoSelectRecommendedModel(_catalogData.recommended_base);
+        }
+      } else {
+        // Catalog not loaded yet — load it now (will sync dropdown automatically)
+        loadModelCatalog();
+      }
+    }
+  } catch (e) {}
+}
+
+// Auto-select the recommended model in the catalog dropdown (and text input)
+// but only if the user hasn't already saved a base model for this model.
+// NOTE: This only updates the UI — it does NOT auto-save to the server.
+// Saving only happens when the user explicitly picks from the dropdown (onCatalogSelect)
+// or clicks "Save Model Selection". This prevents saving with an empty _activeModel
+// during page init (before loadModels() has set _activeModel).
+function _autoSelectRecommendedModel(recommendedId) {
+  const sel = document.getElementById('cfg-base-model-select');
+  const textInput = document.getElementById('cfg-base-model');
+  // Check if the recommended model exists in the dropdown
+  for (const opt of sel.options) {
+    if (opt.value === recommendedId) {
+      sel.value = recommendedId;
+      textInput.value = recommendedId;
+      // Show notes for the recommended model
+      if (_catalogData) {
+        const m = _catalogData.models.find(x => x.id === recommendedId);
+        if (m) {
+          _showCatalogNotes(m);
+          // Also apply the quant recommendation for this model to training settings
+          // (only if no saved train_settings — system defaults are already set)
+          _applyModelQuantRecommendation(m);
+        }
+      }
+      // Update pipeline notes
+      const shortBm = recommendedId.includes('/') ? recommendedId.split('/').pop() : recommendedId;
+      const note1 = document.getElementById('pipeline-base-model-note');
+      const note2 = document.getElementById('pipeline-base-model-note2');
+      if (note1) note1.textContent = shortBm;
+      if (note2) note2.textContent = shortBm;
+      break;
+    }
+  }
+}
+
+// Update training settings quant/batch to match a specific catalog model's recommendation.
+// Called when auto-selecting a recommended model (no saved settings scenario).
+function _applyModelQuantRecommendation(catalogModel) {
+  // The quant_mode from the catalog is the optimal setting for this model on this GPU.
+  // IMPORTANT: Only set the quant if the corresponding option is actually ENABLED in the
+  // dropdown. The catalog may return "bf16" for a small model on a 16 GB GPU (server-side
+  // fix applies vram>=24 gate, but the previous cached catalog response may not have that fix).
+  // Double-checking the DOM option avoids setting a disabled option as the selected value.
+  const rawQuant = catalogModel.quant_mode === 'too_large' ? '4bit' : catalogModel.quant_mode;
+  if (!rawQuant) return;
+
+  const sel = document.getElementById('ts-quant');
+  const opt = sel.querySelector('option[value="' + rawQuant + '"]');
+  // If the desired quant option is disabled (e.g. bf16 on a 16 GB GPU), fall back to 4bit
+  const quant = (opt && !opt.disabled) ? rawQuant : '4bit';
+  sel.value = quant;
+
+  // Update VRAM estimate for the new model
+  updateVramEstimate();
+
+  // Update the note to reflect this is model-specific
+  const noteEl = document.getElementById('ts-note');
+  if (noteEl) {
+    const quantName = quant === 'bf16' ? 'BF16 (native, fastest)' :
+                      quant === 'fp16' ? 'FP16 (full precision)' : '4-bit QLoRA (memory efficient)';
+    const existing = noteEl.textContent;
+    // Replace the trailing recommendation if already set, or append
+    noteEl.textContent = existing.replace(/ — .*recommended.*$/, '') +
+      ` — ${quantName} recommended for ${catalogModel.id.split('/').pop()}.`;
+  }
+}
+
+async function addModel() {
+  const name = document.getElementById('new-model-name').value.trim();
+  const base = document.getElementById('new-model-base').value.trim();
+  if (!name) { toast('Enter a model name', 'error'); return; }
+  try {
+    const r = await fetch(API + '/models/add', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, base_model: base })
+    });
+    const j = await r.json();
+    if (j.error) { toast(j.error, 'error'); return; }
+    toast('Created ' + name + ' — training data folder ready', 'success');
+    hideAddModel();
+    document.getElementById('new-model-name').value = '';
+    _activeModel = name;
+    _updateHeaderName(name);
+    // Clear stale console output from the previous model
+    _resetCenterPaneForModelSwitch();
+    await loadModels();
+    await loadModelFields();
+    await loadDataset();
+    loadKnowledgeStats();
+  } catch (e) {
+    toast('Server offline', 'error');
+  }
+}
+
+async function deleteModel() {
+  if (!_activeModel) return;
+  if (!confirm('Remove "' + _activeModel + '" from config? (Training data folder is kept.)')) return;
+  try {
+    const r = await fetch(API + '/models/delete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: _activeModel })
+    });
+    const j = await r.json();
+    if (j.error) { toast(j.error, 'error'); return; }
+    toast('Removed ' + _activeModel + ', switched to ' + j.active, 'success');
+    _activeModel = j.active;
+    await loadModels();
+    await loadDataset();
+    loadKnowledgeStats();
+  } catch (e) {
+    toast('Server offline', 'error');
+  }
+}
+
+async function saveModelSettings() {
+  if (!_activeModel) {
+    toast('No active model — reload the page', 'error');
+    return;
+  }
+  const base_model    = document.getElementById('cfg-base-model').value.trim();
+  const system_prompt = document.getElementById('cfg-system-prompt').value.trim();
+  if (!base_model) {
+    toast('Base model cannot be empty', 'error');
+    return;
+  }
+  try {
+    const r = await fetch(API + '/models/update', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: _activeModel, base_model, system_prompt })
+    });
+    if (r.ok) {
+      toast('Settings saved for ' + _activeModel, 'success');
+      // Reset the saved-prompt baseline and re-disable the Save button
+      _savedSystemPrompt = system_prompt;
+      const _savePromptBtn = document.getElementById('btn-save-system-prompt');
+      if (_savePromptBtn) _savePromptBtn.disabled = true;
+      // Update pipeline notes with the new base model name
+      const shortBm = base_model.includes('/') ? base_model.split('/').pop() : base_model;
+      const note1 = document.getElementById('pipeline-base-model-note');
+      const note2 = document.getElementById('pipeline-base-model-note2');
+      if (note1) note1.textContent = shortBm;
+      if (note2) note2.textContent = shortBm;
+      _updateTimeEstimate();
+      // Re-check pipeline state — the saved base model determines which LoRA and GGUF
+      // files are valid, so training_done and export_done must be re-evaluated.
+      await _updatePipelineSteps();
+    } else {
+      const j = await r.json().catch(() => ({}));
+      toast('Failed to save: ' + (j.error || r.status), 'error');
+    }
+  } catch (e) {
+    toast('Training Studio server is not running — start it with: python train/server.py', 'error');
+  }
+}
+
+function showAddModel() {
+  // Populate the base-model dropdown from the catalog, same as the Model Settings dropdown
+  const sel = document.getElementById('new-model-base');
+  sel.innerHTML = '';
+
+  if (_catalogData && _catalogData.models && _catalogData.models.length > 0) {
+    // Sort by params_b ascending (smallest first)
+    const sorted = [..._catalogData.models].sort((a, b) => a.params_b - b.params_b);
+
+    // Determine which model to pre-select: recommended_base if available, else first fitting model
+    const recommended = _catalogData.recommended_base || '';
+
+    sorted.forEach(m => {
+      const opt = document.createElement('option');
+      opt.value = m.id;
+      if (!m.fits) {
+        opt.disabled = true;
+        opt.textContent = '⛔ [' + m.tag + '] ' + m.id + ' (needs ' + m.min_vram_4bit + ' GB)';
+      } else {
+        const quantIcon = m.quant_mode === 'bf16' || m.quant_mode === 'fp16' ? '⚡' : '🔵';
+        const tag = m.tag.replace('⭐', '').trim();
+        const star = m.tag.includes('⭐') ? ' ⭐' : '';
+        opt.textContent = quantIcon + ' [' + tag + '] ' + m.id + star;
+      }
+      if (m.id === recommended) opt.selected = true;
+      sel.appendChild(opt);
+    });
+
+    // If no recommended matched (catalog has no recommended_base), select first fitting model
+    if (!sel.value || sel.options[sel.selectedIndex].disabled) {
+      for (const opt of sel.options) {
+        if (!opt.disabled) { opt.selected = true; break; }
+      }
+    }
+  } else {
+    // Catalog not loaded yet — show a sensible default
+    const opt = document.createElement('option');
+    opt.value = 'Qwen/Qwen2.5-7B';
+    opt.textContent = 'Qwen/Qwen2.5-7B';
+    sel.appendChild(opt);
+  }
+
+  document.getElementById('add-model-form').style.display = 'flex';
+}
+function hideAddModel() {
+  document.getElementById('add-model-form').style.display = 'none';
+}
+
+// ── Training Settings ─────────────────────────────────
+async function saveTrainingSettings() {
+  if (!_activeModel) { toast('No active model', 'error'); return; }
+  const settings = {
+    quant:      document.getElementById('ts-quant').value,
+    epochs:     parseInt(document.getElementById('ts-epochs').value) || 3,
+    batch:      parseInt(document.getElementById('ts-batch').value)  || 2,
+    lr:         document.getElementById('ts-lr').value.trim() || '1e-4',
+    lora_r:     parseInt(document.getElementById('ts-lora-r').value) || 16,
+    seq_len:    parseInt(document.getElementById('ts-seq-len').value) || 2048,
+    eval_split: document.getElementById('ts-eval-split').checked,
+  };
+  try {
+    const r = await fetch(API + '/models/update', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: _activeModel, train_settings: settings })
+    });
+    if (r.ok) {
+      toast('⚙️ Build settings changed — next export will use these parameters', 'success');
+    } else {
+      const j = await r.json().catch(() => ({}));
+      toast('Failed to save: ' + (j.error || r.status), 'error');
+    }
+  } catch (e) {
+    toast('Training Studio server is not running — start it with: python train/server.py', 'error');
+  }
+}
+
+// ── VRAM estimate based on selected model + quantization ──────────────
+// Uses the catalog's params_b for the currently selected base model.
+// Formulas (training, not just inference):
+//   4-bit:   ~0.5 GB/B params + 3 GB overhead (optimizer states, activations)
+//   fp16/bf16: ~2 GB/B params + 4 GB overhead
+function updateVramEstimate() {
+  const el = document.getElementById('ts-vram-estimate');
+  if (!el) return;
+
+  const quant = document.getElementById('ts-quant').value;
+  const baseModelId = document.getElementById('cfg-base-model').value.trim();
+
+  // Get params_b from the catalog
+  let paramsB = null;
+  if (baseModelId && _catalogData) {
+    const cm = _catalogData.models.find(x => x.id === baseModelId);
+    if (cm) paramsB = cm.params_b;
+  }
+
+  if (!paramsB) {
+    el.textContent = '';
+    return;
+  }
+
+  let estimatedVram;
+  if (quant === '4bit') {
+    estimatedVram = Math.round(paramsB * 0.55 + 3);
+  } else {
+    // fp16 or bf16
+    estimatedVram = Math.round(paramsB * 2.1 + 4);
+  }
+
+  const vramAvail = _catalogData ? _catalogData.vram_gb : 0;
+  const fits = vramAvail === 0 || estimatedVram <= vramAvail;
+  const color = fits ? '#6b7fa0' : '#f87171';
+  const warning = !fits ? ' ⚠ exceeds your GPU' : '';
+
+  el.style.color = color;
+  el.textContent = `Est. VRAM: ~${estimatedVram} GB for ${paramsB}B params (${quant})${warning}`;
+}
+
+function _applyTrainingSettings(ts) {
+  if (!ts) return;
+  if (ts.quant)              document.getElementById('ts-quant').value      = ts.quant;
+  if (ts.epochs)             document.getElementById('ts-epochs').value     = ts.epochs;
+  if (ts.batch)              document.getElementById('ts-batch').value      = ts.batch;
+  if (ts.lr)                 document.getElementById('ts-lr').value         = ts.lr;
+  if (ts.lora_r)             document.getElementById('ts-lora-r').value     = ts.lora_r;
+  if (ts.seq_len)            document.getElementById('ts-seq-len').value    = ts.seq_len;
+  if (ts.eval_split != null) document.getElementById('ts-eval-split').checked = !!ts.eval_split;
+}
+
+function _setQuantOptionsForVram(vram, bf16) {
+  // Enable/disable FP16 and BF16 options based on available VRAM.
+  // Only users with 24+ GB VRAM on a CUDA GPU can use Full FP16 or Full BF16.
+  // vram == 0 means NO GPU detected (not "unknown") — must use 4-bit (or CPU).
+  const sel = document.getElementById('ts-quant');
+  const fp16opt = sel.querySelector('option[value="fp16"]');
+  const bf16opt = sel.querySelector('option[value="bf16"]');
+  if (!fp16opt || !bf16opt) return;
+
+  if (vram >= 24) {
+    // Enough VRAM — enable full-precision options
+    fp16opt.disabled = false;
+    fp16opt.textContent = 'Full FP16 (no quantization)';
+    bf16opt.disabled = !bf16;  // BF16 only available on Ampere+ GPUs
+    bf16opt.textContent = bf16
+      ? 'Full BF16 (no quantization, fastest)'
+      : 'Full BF16 — requires Ampere+ GPU (yours is older)';
+  } else if (vram > 0) {
+    // GPU present but < 24 GB — disable fp16/bf16 with VRAM explanation
+    const haveStr = ' (you have ' + vram + ' GB)';
+    fp16opt.disabled = true;
+    fp16opt.textContent = 'Full FP16 — needs 24+ GB VRAM' + haveStr;
+    bf16opt.disabled = true;
+    bf16opt.textContent = 'Full BF16 — needs 24+ GB VRAM' + haveStr;
+    // Force back to 4bit if currently set to an unavailable option
+    if (sel.value === 'fp16' || sel.value === 'bf16') {
+      sel.value = '4bit';
+    }
+  } else {
+    // No GPU detected (vram == 0) — disable fp16/bf16 AND note CPU-only
+    fp16opt.disabled = true;
+    fp16opt.textContent = 'Full FP16 — requires NVIDIA GPU';
+    bf16opt.disabled = true;
+    bf16opt.textContent = 'Full BF16 — requires NVIDIA GPU';
+    // Also update 4bit label to indicate CPU limitation
+    const qbitOpt = sel.querySelector('option[value="4bit"]');
+    if (qbitOpt) qbitOpt.textContent = '4-bit QLoRA (CPU only — very slow without GPU)';
+    if (sel.value === 'fp16' || sel.value === 'bf16') {
+      sel.value = '4bit';
+    }
+  }
+}
+
+function _applySystemTrainingDefaults(sysInfo) {
+  // Set smart defaults based on detected VRAM and BF16 support.
+  // Thresholds match the system recommendation text in /system-info:
+  //   <8 GB  → 4-bit, batch=1, seq=1024
+  //   8-15   → 4-bit, batch=1-2
+  //   16-23  → 4-bit QLoRA (NOT fp16 — 16 GB is too tight for fp16 7B training)
+  //   24+    → bf16 if supported, else fp16
+  const vram = sysInfo.vram_gb || 0;
+  const bf16 = sysInfo.bf16   || false;
+
+  // First, enable/disable options based on VRAM so the auto-select below is valid
+  _setQuantOptionsForVram(vram, bf16);
+
+  let quant  = '4bit';
+  let batch  = 2;
+  let seqlen = 2048;
+
+  if (vram >= 24 && bf16) { quant = 'bf16'; batch = 4; }
+  else if (vram >= 24)    { quant = 'fp16'; batch = 2; }
+  else if (vram >= 16)    { quant = '4bit'; batch = 2; }  // 16-23 GB: 4-bit required
+  else if (vram >= 10)    { quant = '4bit'; batch = 2; }
+  else if (vram >= 8)     { quant = '4bit'; batch = 1; }
+  else                    { quant = '4bit'; batch = 1; seqlen = 1024; }
+
+  document.getElementById('ts-quant').value   = quant;
+  document.getElementById('ts-batch').value   = batch;
+  document.getElementById('ts-seq-len').value = seqlen;
+
+  const noteEl = document.getElementById('ts-note');
+  if (noteEl) {
+    const quantName = quant === 'bf16' ? 'Full BF16 (fastest, no quantization)' :
+                      quant === 'fp16' ? 'Full FP16 (no quantization)' : '4-bit QLoRA';
+    noteEl.innerHTML = `<span style="color:#94a3b8;">Recommended for your ${vram} GB GPU:</span><br><span style="color:#e2e8f0;font-weight:600;">${quantName}, batch=${batch}.</span>`;
+  }
+}
+
+// ── Model Catalog Dropdown ────────────────────────────
+let _catalogData = null;  // cached catalog response
+
+async function loadModelCatalog() {
+  try {
+    const r = await fetch(API + '/model-catalog');
+    if (!r.ok) return;
+    _catalogData = await r.json();
+    _buildCatalogDropdown(_catalogData);
+    // Re-run the export hint now that VRAM info is available.
+    // (loadSystemInfo calls _updateExportHint before _catalogData is populated,
+    // so we call it again here once we have the real vram_gb value.)
+    _updateExportHint();
+  } catch (e) {
+    // Server offline — leave dropdown with placeholder
+    const sel = document.getElementById('cfg-base-model-select');
+    sel.innerHTML = '<option value="">— Server offline —</option>';
+  }
+}
+
+function _buildCatalogDropdown(data) {
+  const sel = document.getElementById('cfg-base-model-select');
+  const currentVal = document.getElementById('cfg-base-model').value.trim();
+  sel.innerHTML = '';
+
+  // Sort all models by params_b ascending (smallest first)
+  const sorted = [...data.models].sort((a, b) => a.params_b - b.params_b);
+
+  // Check if the saved value exists in the catalog
+  const savedInCatalog = currentVal && data.models.find(m => m.id === currentVal);
+
+  // Determine the effective selection value:
+  // 1. If saved value is in catalog → use it
+  // 2. If saved value is missing/empty → use recommended_base
+  // 3. If saved value is stale (not in catalog) → use recommended_base
+  const effectiveVal = savedInCatalog ? currentVal
+                     : (data.recommended_base || '');
+
+  // Add a blank "choose" option — disabled so user can't select it
+  // Only shown if we have no effective value to pre-select
+  const blank = document.createElement('option');
+  blank.value = '';
+  blank.textContent = '— Select a model —';
+  blank.disabled = true;
+  if (!effectiveVal) blank.selected = true;
+  sel.appendChild(blank);
+
+  // Render all models in one sorted list; disable ones that don't fit
+  sorted.forEach(m => {
+    const opt = document.createElement('option');
+    opt.value = m.id;
+    if (!m.fits) {
+      // Too large — show but disable (like the quant dropdown)
+      opt.disabled = true;
+      opt.textContent = '⛔ [' + m.tag + '] ' + m.id + ' (needs ' + m.min_vram_4bit + ' GB)';
+    } else {
+      const quantIcon = m.quant_mode === 'bf16' || m.quant_mode === 'fp16' ? '⚡' : '🔵';
+      const tag = m.tag.replace('⭐', '').trim();
+      const star = m.tag.includes('⭐') ? ' ⭐' : '';
+      opt.textContent = quantIcon + ' [' + tag + '] ' + m.id + star;
+    }
+    if (m.id === effectiveVal) opt.selected = true;
+    sel.appendChild(opt);
+  });
+
+  // Update notes and sync the hidden input to the effective value
+  if (savedInCatalog) {
+    // Saved value is valid — show its notes
+    _showCatalogNotes(savedInCatalog);
+  } else if (effectiveVal) {
+    // No saved value (or stale) — auto-select recommended without saving to server
+    _autoSelectRecommendedModel(effectiveVal);
+  }
+}
+
+async function onCatalogSelect(modelId) {
+  if (!modelId) {
+    document.getElementById('cfg-quant-note').textContent = '';
+    document.getElementById('cfg-model-desc').textContent = '';
+    return;
+  }
+  // Set the text input to match
+  document.getElementById('cfg-base-model').value = modelId;
+  // Show notes and update training settings quant recommendation
+  if (_catalogData) {
+    const m = _catalogData.models.find(x => x.id === modelId);
+    if (m) {
+      _showCatalogNotes(m);
+      // Update the quant dropdown to match this model's recommendation on your GPU
+      _applyModelQuantRecommendation(m);
+      // Update VRAM estimate for the newly selected model
+      updateVramEstimate();
+      // Update the pipeline time estimate and export hint (both depend on params_b)
+      _updateTimeEstimate();
+      _updateExportHint();
+    }
+  }
+  // Auto-save base model immediately — no "Use" button needed
+  if (_activeModel) {
+    try {
+      const system_prompt = document.getElementById('cfg-system-prompt').value.trim();
+      const r = await fetch(API + '/models/update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: _activeModel, base_model: modelId, system_prompt })
+      });
+      if (r.ok) {
+        toast('Base model set to ' + modelId.split('/').pop(), 'success');
+        const shortBm = modelId.includes('/') ? modelId.split('/').pop() : modelId;
+        const note1 = document.getElementById('pipeline-base-model-note');
+        const note2 = document.getElementById('pipeline-base-model-note2');
+        if (note1) note1.textContent = shortBm;
+        if (note2) note2.textContent = shortBm;
+        // Refresh pipeline steps — if the new base model differs from the trained LoRA's
+        // base model, the server will return training_done=false so the Train button resets.
+        await _updatePipelineSteps();
+      } else {
+        toast('Could not save — is the Training Studio server running?', 'error');
+      }
+    } catch (e) {
+      toast('Training Studio server is not running — start it with: python train/server.py', 'error');
+    }
+  }
+}
+
+
+function _showCatalogNotes(m) {
+  const quantEl = document.getElementById('cfg-quant-note');
+  const descEl  = document.getElementById('cfg-model-desc');
+  descEl.textContent = m.description + '  ·  ' + m.params_b + 'B params  ·  min ' + m.min_vram_4bit + ' GB VRAM (4-bit).';
+  quantEl.textContent = '';
+}
+
+// ── System Analysis ───────────────────────────────────
+async function loadSystemInfo() {
+  const el = document.getElementById('sys-content');
+  try {
+    const r = await fetch(API + '/system-info');
+    if (!r.ok) { el.textContent = 'Could not reach server.'; return; }
+    const s = await r.json();
+    const levelColor = { good: '#34d399', info: '#7dd3fc', warn: '#fbbf24' };
+
+    let html = '';
+    // Hardware summary — stat-row style, consistent with other panels
+    const _row = (label, value, valueColor) =>
+      `<div class="stat-row"><span>${label}</span><span style="color:${valueColor || 'var(--text-primary)'}">${value}</span></div>`;
+
+    if (s.gpu_name) {
+      html += _row('GPU', escHtml(s.gpu_name), '#7dd3fc');
+      html += _row('VRAM', s.vram_gb + ' GB');
+      if (s.cuda_compute) html += _row('SM Compute', s.cuda_compute);
+      if (s.cuda_version)  html += _row('CUDA Toolkit', s.cuda_version);
+      if (s.bf16 !== undefined) html += _row('BF16', s.bf16 ? '✓ Supported' : '✗ Not supported', s.bf16 ? '#34d399' : '#f87171');
+      if (s.ram_gb) html += _row('RAM', s.ram_gb + ' GB');
+    } else {
+      html += _row('GPU', '⚠ No CUDA GPU detected', '#f87171');
+      if (s.ram_gb) html += _row('RAM', s.ram_gb + ' GB');
+    }
+
+    // Warnings & info
+    if (s.recommendations && s.recommendations.length) {
+      s.recommendations.forEach(rec => {
+        const col = levelColor[rec.level] || '#64748b';
+        const icon = rec.level === 'good' ? '✓' : rec.level === 'warn' ? '⚠' : 'ℹ';
+        html += `<div style="display:flex;gap:6px;padding:3px 0;border-bottom:1px solid #1e2a3a11;line-height:1.4;">`;
+        html += `<span style="color:${col};flex-shrink:0;">${icon}</span>`;
+        html += `<span style="color:${col === '#34d399' ? '#e2e8f0' : col};">${escHtml(rec.text)}</span>`;
+        html += `</div>`;
+      });
+    }
+
+    // Cache CUDA compute version for _autoSelectTorchIndex (used in Updates tab)
+    if (s.cuda_compute) _detectedCudaCompute = s.cuda_compute;
+
+    el.innerHTML = html || 'No data available.';
+
+
+    // ── Recommended Settings — separate card below System Analysis ──
+    const recCard = document.getElementById('sys-rec-card');
+    const recContent = document.getElementById('sys-rec-content');
+    if (recCard && recContent && s.vram_gb > 0) {
+      const vram = s.vram_gb;
+      const bf16 = s.bf16 || false;
+
+      let recQuant, recBatch, recSeq;
+      if (vram >= 24 && bf16) { recQuant = 'bf16'; recBatch = 4; recSeq = 2048; }
+      else if (vram >= 24)    { recQuant = 'fp16'; recBatch = 2; recSeq = 2048; }
+      else if (vram >= 16)    { recQuant = '4bit'; recBatch = 2; recSeq = 2048; }
+      else if (vram >= 10)    { recQuant = '4bit'; recBatch = 2; recSeq = 2048; }
+      else if (vram >= 8)     { recQuant = '4bit'; recBatch = 1; recSeq = 2048; }
+      else                    { recQuant = '4bit'; recBatch = 1; recSeq = 1024; }
+
+      const quantLabels = { '4bit': '4-bit QLoRA', 'fp16': 'Full FP16', 'bf16': 'Full BF16' };
+      const quantColors = { '4bit': '#38bdf8', 'fp16': '#34d399', 'bf16': '#34d399' };
+      const qColor = quantColors[recQuant] || '#38bdf8';
+      const qLabel = quantLabels[recQuant] || recQuant;
+      // Match train.py's auto-detect: grad ckpt ON when VRAM headroom after
+      // loading the model is < 8 GB.  Use the recommended model's min_vram_4bit
+      // if available; fall back to a conservative 5 GB estimate for a 7B model.
+      let modelVram4bit = 5; // fallback: ~7B model in 4-bit
+      if (s.recommended_base && _catalogData) {
+        const cm = _catalogData.models.find(x => x.id === s.recommended_base);
+        if (cm) modelVram4bit = cm.min_vram_4bit;
+      }
+      const needsGradCkpt = vram > 0 && (vram - modelVram4bit) < 8;
+
+      // Shared badge — single neutral style for all values
+      const badge = (text, color) =>
+        `<span style="font-size:0.73rem;font-weight:600;color:${color};background:${color}18;padding:2px 10px;border-radius:4px;border:1px solid ${color}33;white-space:nowrap;">${text}</span>`;
+
+      const neutral = '#f1f5f9';  // near-white — matches var(--text-primary) for value contrast
+
+      let rhtml = '';
+
+      // Base model first
+      if (s.recommended_base) {
+        const shortBm = s.recommended_base.includes('/') ? s.recommended_base.split('/').pop() : s.recommended_base;
+        rhtml += `<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid #1e2a3a;">`;
+        rhtml += `<span style="font-size:0.82rem;color:#94a3b8;">Base model</span>`;
+        rhtml += badge(escHtml(shortBm), neutral);
+        rhtml += `</div>`;
+      }
+
+      rhtml += `<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid #1e2a3a;">`;
+      rhtml += `<span style="font-size:0.82rem;color:#94a3b8;">Quantization</span>`;
+      rhtml += badge(qLabel, neutral);
+      rhtml += `</div>`;
+
+      rhtml += `<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid #1e2a3a;">`;
+      rhtml += `<span style="font-size:0.82rem;color:#94a3b8;">Batch size</span>`;
+      rhtml += badge(String(recBatch), neutral);
+      rhtml += `</div>`;
+
+      rhtml += `<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid #1e2a3a;">`;
+      rhtml += `<span style="font-size:0.82rem;color:#94a3b8;">Max seq length</span>`;
+      rhtml += badge(String(recSeq), neutral);
+      rhtml += `</div>`;
+
+      // Grad checkpointing — yellow only if required (warning), green if optional
+      const gcColor = needsGradCkpt ? '#fbbf24' : neutral;
+      rhtml += `<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;">`;
+      rhtml += `<span style="font-size:0.82rem;color:#94a3b8;">Grad checkpointing</span>`;
+      rhtml += badge(needsGradCkpt ? 'Required' : 'Optional', gcColor);
+      rhtml += `</div>`;
+
+      recContent.innerHTML = rhtml;
+      recCard.style.display = 'block';
+    }
+
+    // Apply smart training defaults based on system info (only if no saved settings)
+    _applySystemTrainingDefaults(s);
+    // Update export hint now that we have system info
+    _updateExportHint();
+  } catch (e) {
+    el.textContent = 'Server offline — restart to see system info.';
+  }
+}
+
+// ── Training Console (live SSE stream for train.py) ──
+let _trainEvtSource = null;
+let _trainRunBtn    = null;
+
+
+// The in-place progress bar span — a single reused element at the bottom of the log.
+let _tcProgressSpan = null;
+// Label of the last bar that was frozen as a permanent line.
+// Used to suppress duplicate 100% lines — tqdm emits the 100% line twice
+// (once as the final in-place update, once as the closing summary).
+let _tcLastFrozenLabel = null;
+
+// Extract a short label from a tqdm/progress bar line for deduplication.
+// Returns the part before the first '%' or '|', lowercased and trimmed.
+function _tcBarLabel(txt) {
+  // "[progress] ..." bars — use the whole prefix up to the first digit run
+  if (txt.trimStart().startsWith('[progress]')) return '[progress]';
+  // tqdm bars: "Loading weights: 99%|..." or "Applying ChatML template: 100%|..."
+  const m = txt.match(/^([^|%\d]+)/);
+  return m ? m[1].trim().toLowerCase() : txt.substring(0, 40).toLowerCase();
+}
+
+function _tcFreezeProgress(force) {
+  // Freeze the current progress span as a permanent line.
+  // force=true: always freeze (used when a new bar with a different label starts,
+  //   so we don't silently discard mid-progress bars when they get replaced).
+  // force=false (default): only freeze if bar is at 100%.
+  // Deduplication: tqdm emits the same 100% line twice in a row — detect by
+  // comparing the FULL text (not just the label), so sequential bars with the
+  // same label prefix (e.g. two HuggingFace "Map:" bars) are both preserved.
+  if (!_tcProgressSpan || !_tcProgressSpan.parentNode) return;
+  const txt = _tcProgressSpan.textContent || '';
+  const isComplete = /100(\.\d+)?%/.test(txt);
+  if (!force && !isComplete) return;
+
+  // Remove the live span — always, whether we freeze it or not
+  _tcProgressSpan.remove();
+  _tcProgressSpan = null;
+
+  // Skip creating a duplicate frozen line only if the EXACT same text was
+  // just frozen (tqdm closing-summary dedup). Using full text avoids falsely
+  // suppressing sequential bars that share a label prefix (e.g. "Map: 100%").
+  if (isComplete && txt.trimEnd() === _tcLastFrozenLabel) return;
+  if (isComplete) _tcLastFrozenLabel = txt.trimEnd();
+
+  const frozen = document.createElement('span');
+  if (txt.trimStart().startsWith('[progress]') && txt.includes('█')) {
+    // Training step bar — keep as a permanent green line
+    frozen.className = 'tl-line tl-epoch';
+  } else {
+    // tqdm bar (Map, Loading weights, etc.) — keep as a dim info line
+    frozen.className = 'tl-line tl-info';
+  }
+  frozen.textContent = txt.trimEnd();
+  const log = document.getElementById('train-log');
+  log.appendChild(frozen);
+}
+
+function _tcSetProgressText(text) {
+  const log = document.getElementById('train-log');
+
+  // If this incoming text is already 100% and is exactly the same text as the last
+  // frozen bar, it's tqdm's duplicate closing summary — discard it.
+  // Use full-text comparison so sequential bars with the same label prefix (e.g.
+  // two HuggingFace "Map:" bars) are both shown rather than the second being dropped.
+  if (/100(\.\d+)?%/.test(text) && text.trimEnd() === _tcLastFrozenLabel) {
+    return;
+  }
+
+  // If the label has changed (new bar starting), force-freeze the old bar first
+  // so it stays visible in the log rather than being silently overwritten.
+  if (_tcProgressSpan) {
+    const oldLabel = _tcBarLabel(_tcProgressSpan.textContent || '');
+    const newLabel = _tcBarLabel(text);
+    if (oldLabel !== newLabel) {
+      _tcFreezeProgress(true);  // force=true: preserve even if not at 100%
+    }
+  }
+
+  if (!_tcProgressSpan) {
+    _tcProgressSpan = document.createElement('span');
+    _tcProgressSpan.className = 'tl-line tl-progress';
+  }
+  // Always keep the progress span as the last child so it sits below all log lines
+  if (_tcProgressSpan.parentNode !== log || log.lastChild !== _tcProgressSpan) {
+    log.appendChild(_tcProgressSpan);
+  }
+  _tcProgressSpan.textContent = text;
+  log.scrollTop = log.scrollHeight;
+}
+
+function _tcAppendLine(text) {
+  const log = document.getElementById('train-log');
+
+  // If the progress span is at 100%, freeze it as a permanent line before appending below it
+  _tcFreezeProgress();
+
+  // Strip leading \r (carriage return)
+  const clean = text.replace(/^\r+/, '').trimEnd();
+  if (!clean) return;
+
+  // Classify line for colour
+  let cls = 'tl-info';
+  if (clean.includes('Epoch') && clean.includes('complete')) {
+    cls = 'tl-epoch';
+  } else if (clean.includes('Training finished') || clean.includes('Training done')) {
+    cls = 'tl-done';
+  } else if (clean.includes('WARNING') || clean.includes('WARN') || clean.includes('warning')) {
+    cls = 'tl-warn';
+  } else if (clean.includes('Error') || clean.includes('error') || clean.includes('Traceback')) {
+    cls = 'tl-error';
+  } else if (clean.startsWith('===') || clean.startsWith('---')) {
+    cls = 'tl-section';
+  }
+
+  const span = document.createElement('span');
+  span.className = 'tl-line ' + cls;
+  span.textContent = clean;
+  // Insert before the progress span if it exists, so it stays last
+  if (_tcProgressSpan && _tcProgressSpan.parentNode === log) {
+    log.insertBefore(span, _tcProgressSpan);
+  } else {
+    log.appendChild(span);
+  }
+
+  // Auto-scroll to bottom
+  log.scrollTop = log.scrollHeight;
+}
+
+// ── Reconnect to an already-running train stream (after page refresh) ────────
+// Called from init() when /run/train/status returns {running: true}.
+// Re-attaches to the SSE stream with ?reconnect=1 so the server knows NOT to
+// start a new process.  Shows the Stop button and marks the pipeline as running.
+function _reconnectTrainStream() {
+  if (_trainEvtSource) return;  // already connected
+
+  document.getElementById('train-log').innerHTML = '';
+  _tcProgressSpan = null;
+  _tcLastFrozenLabel = null;
+
+  // Show the training console and the Stop button
+  _showCenterConsole('train-console');
+  document.getElementById('btn-train-stop').style.display = 'inline-block';
+
+  // Mark the Train button as running and lock the pipeline
+  const trainBtn = document.getElementById('btn-run-train');
+  if (trainBtn) {
+    trainBtn.classList.add('running');
+    _setIcon(trainBtn.querySelector('.run-icon'), _ICON_SPIN);
+    _trainRunBtn = trainBtn;
+  }
+  _setPipelineRunning('train', trainBtn);
+
+  _tcAppendLine('🔄 Reconnected — training is still in progress…');
+
+  // Reconnect with ?reconnect=1 so the server reattaches rather than starts a new run
+  _trainEvtSource = new EventSource(API + '/run/train/stream?reconnect=1');
+
+  _trainEvtSource.onmessage = (evt) => {
+    try {
+      const msg = JSON.parse(evt.data);
+      if (msg.type === 'line') {
+        if (msg.text.trim()) {
+          const t = msg.text.trim();
+          const isProgressBar =
+            (t.startsWith('[progress]') && (t.includes('█') || t.includes('░') || /\d+\.\d+%/.test(t))) ||
+            /\d+%\s*\|/.test(t) ||
+            /^\s*\d+\/\d+\s*\[/.test(t);
+          if (isProgressBar) { _tcSetProgressText(t); } else { _tcAppendLine(msg.text); }
+        }
+      } else if (msg.type === 'progress') {
+        _tcSetProgressText(msg.text);
+      } else if (msg.type === 'done') {
+        const ok = msg.returncode === 0;
+        _tcAppendLine(ok ? '✓ Training complete!' : '✖ train.py exited with code ' + msg.returncode);
+        document.getElementById('btn-train-stop').style.display = 'none';
+        if (_trainRunBtn) {
+          _trainRunBtn.classList.remove('running');
+          _trainRunBtn.classList.add(ok ? 'success' : 'failed');
+          _setIcon(_trainRunBtn.querySelector('.run-icon'), ok ? _ICON_CHECK : _ICON_CROSS);
+          _trainRunBtn = null;
+        }
+        _setPipelineRunning(null, null);
+        if (ok) _updatePipelineSteps();
+        toast(ok ? '✓ Training complete!' : '✖ Training failed', ok ? 'success' : 'error');
+        _trainEvtSource.close();
+        _trainEvtSource = null;
+      } else if (msg.type === 'error') {
+        _tcAppendLine('✖ ' + msg.text);
+        document.getElementById('btn-train-stop').style.display = 'none';
+        if (_trainRunBtn) {
+          _trainRunBtn.classList.remove('running');
+          _trainRunBtn.classList.add('failed');
+          _setIcon(_trainRunBtn.querySelector('.run-icon'), _ICON_CROSS);
+          _trainRunBtn = null;
+        }
+        _setPipelineRunning(null, null);
+        _updatePipelineSteps();
+        _trainEvtSource.close();
+        _trainEvtSource = null;
+      }
+    } catch (e) { /* ignore parse errors */ }
+  };
+
+  _trainEvtSource.onerror = () => {
+    // Always close the EventSource on error — this prevents the browser's built-in
+    // auto-reconnect from firing onopen again and causing the server to launch a
+    // second train.py process after the first one finishes.
+    if (_trainEvtSource) {
+      _trainEvtSource.close();
+      _trainEvtSource = null;
+    }
+    _tcAppendLine('⚠ Stream closed.');
+    document.getElementById('btn-train-stop').style.display = 'none';
+    if (_trainRunBtn) { _trainRunBtn.classList.remove('running'); _trainRunBtn = null; }
+    _setPipelineRunning(null, null);
+    _updatePipelineSteps();
+  };
+}
+
+function openTrainConsole(btn, fresh) {
+  if (_trainEvtSource) {
+    // Console already running — just show it
+    _showCenterConsole('train-console');
+    return;
+  }
+
+  // Guard: block training if an export is currently running
+  if (_generateEvtSource) {
+    toast('Export is in progress — please wait for it to finish before training', 'error');
+    return;
+  }
+
+  // Guard: if training is already 100% complete and this is NOT a fresh/reset run,
+  // do nothing — the adapter is already built. User must press Reset to retrain.
+  if (!fresh && _pipelineState.training_done) {
+    toast('✓ Training already complete — press 🗑 Reset to wipe and retrain from scratch', 'success');
+    _showCenterConsole('train-console');
+    return;
+  }
+
+  // Guard: require at least one training example before starting
+  if (examples.length === 0) {
+    toast('No training examples yet — add at least one Q&A pair first (Step 1 → Step 2)', 'error');
+    return;
+  }
+
+  // If Clean Build, confirm before wiping checkpoints
+  if (fresh) {
+    if (!confirm('🗑 Clean Build will delete all existing checkpoints and start training from scratch.\n\nContinue?')) return;
+  }
+
+  // Reset console
+  document.getElementById('train-log').innerHTML = '';
+  _tcProgressSpan = null;
+  _tcLastFrozenLabel = null;
+  document.getElementById('btn-train-stop').style.display = 'inline-block';
+
+  // Show the center console
+  _showCenterConsole('train-console');
+
+  // Mark pipeline button as running + lock all others
+  _trainRunBtn = btn;
+  btn.classList.add('running');
+  _setIcon(btn.querySelector('.run-icon'), _ICON_SPIN);
+  _setPipelineRunning('train', btn);
+
+  if (fresh) {
+    _tcAppendLine('🗑 Clean Build — wiping checkpoints, starting fresh…');
+  }
+
+  // Open SSE stream — pass fresh=1 and/or eval_split=1 if requested
+  const _evalSplit = document.getElementById('ts-eval-split').checked;
+  const _streamParams = new URLSearchParams();
+  if (fresh)      _streamParams.set('fresh', '1');
+  if (_evalSplit) _streamParams.set('eval_split', '1');
+  const _streamQuery = _streamParams.toString();
+  const streamUrl = API + '/run/train/stream' + (_streamQuery ? '?' + _streamQuery : '');
+  _trainEvtSource = new EventSource(streamUrl);
+
+  _trainEvtSource.onopen = () => {
+    _tcAppendLine('⏳ Connecting to train.py...');
+  };
+
+  _trainEvtSource.onmessage = (evt) => {
+    try {
+      const msg = JSON.parse(evt.data);
+      if (msg.type === 'start') {
+        _tcAppendLine('▶ train.py started');
+      } else if (msg.type === 'progress') {
+        // CR-based in-place progress line (e.g. BNB "loading weights" bar)
+        _tcSetProgressText(msg.text);
+      } else if (msg.type === 'line') {
+        if (msg.text.trim()) {
+          const t = msg.text.trim();
+          // Detect in-place update lines:
+          // 1. [progress] step bar lines from LiveProgressCallback — contain the block bar chars
+          //    or the step/loss/pct pattern. Header/separator/epoch lines are plain log entries.
+          // 2. tqdm-style lines: "loading weights: 5%|███..." or "1698/1698 [00:00<...]"
+          const isProgressBar =
+            (t.startsWith('[progress]') && (t.includes('█') || t.includes('░') || /\d+\.\d+%/.test(t))) ||
+            /\d+%\s*\|/.test(t) ||
+            /^\s*\d+\/\d+\s*\[/.test(t);
+          if (isProgressBar) {
+            _tcSetProgressText(t);
+          } else {
+            _tcAppendLine(msg.text);
+          }
+        }
+      } else if (msg.type === 'done') {
+        const ok = msg.returncode === 0;
+        _tcAppendLine(ok ? '✓ Training complete!' : '✖ train.py exited with code ' + msg.returncode);
+        document.getElementById('btn-train-stop').style.display = 'none';
+        if (_trainRunBtn) {
+          _trainRunBtn.classList.remove('running');
+          _trainRunBtn.classList.add(ok ? 'success' : 'failed');
+          _setIcon(_trainRunBtn.querySelector('.run-icon'), ok ? _ICON_CHECK : _ICON_CROSS);
+          _trainRunBtn = null;
+        }
+        _setPipelineRunning(null, null);
+        if (ok) _updatePipelineSteps();
+        toast(ok ? '✓ Training complete!' : '✖ Training failed', ok ? 'success' : 'error');
+        _trainEvtSource.close();
+        _trainEvtSource = null;
+      } else if (msg.type === 'error') {
+        if (msg.text === 'already_running') {
+          // Another training job is already running (e.g. started in a different tab
+          // or by a different model). Show a clear toast and clean up without marking
+          // the button as failed — the user just needs to wait or stop the other run.
+          toast('⚠ Training is already in progress — wait for it to finish, or press ⏹ Stop first.', 'error');
+          _tcAppendLine('⚠ Training is already in progress — only one model can train at a time.');
+          _tcAppendLine('   Wait for the current run to finish, or press ⏹ Stop to cancel it.');
+        } else {
+          _tcAppendLine('✖ ' + msg.text);
+        }
+        document.getElementById('btn-train-stop').style.display = 'none';
+        if (_trainRunBtn) {
+          _trainRunBtn.classList.remove('running');
+          // 'already_running' is not a failure — leave button in its normal ready state.
+          // A real error (train.py crashed) marks the button as failed.
+          if (msg.text !== 'already_running') {
+            _trainRunBtn.classList.add('failed');
+            _setIcon(_trainRunBtn.querySelector('.run-icon'), _ICON_CROSS);
+          } else {
+            _setIcon(_trainRunBtn.querySelector('.run-icon'), _ICON_PLAY);
+          }
+          _trainRunBtn = null;
+        }
+        _setPipelineRunning(null, null);
+        _updatePipelineSteps();
+        _trainEvtSource.close();
+        _trainEvtSource = null;
+      }
+    } catch (e) { /* ignore parse errors */ }
+  };
+
+  _trainEvtSource.onerror = () => {
+    // Always close the EventSource on error — this prevents the browser's built-in
+    // auto-reconnect from firing onopen again and causing the server to launch a
+    // second train.py process after the first one finishes.
+    if (_trainEvtSource) {
+      _trainEvtSource.close();
+      _trainEvtSource = null;
+    }
+    _tcAppendLine('⚠ Stream closed.');
+    document.getElementById('btn-train-stop').style.display = 'none';
+    if (_trainRunBtn) {
+      _trainRunBtn.classList.remove('running');
+      _trainRunBtn = null;
+    }
+    _setPipelineRunning(null, null);
+    _updatePipelineSteps();
+  };
+}
+
+async function stopTraining() {
+  try {
+    await fetch(API + '/run/train/stop', { method: 'POST' });
+    _tcAppendLine('⏹ Training stopped by user.');
+    document.getElementById('btn-train-stop').style.display = 'none';
+    if (_trainRunBtn) {
+      // Reset to normal state — user intentionally stopped, not a failure
+      _trainRunBtn.classList.remove('running', 'failed', 'success');
+      _setIcon(_trainRunBtn.querySelector('.run-icon'), _ICON_PLAY);
+      _trainRunBtn = null;
+    }
+    _setPipelineRunning(null, null);
+    if (_trainEvtSource) { _trainEvtSource.close(); _trainEvtSource = null; }
+    _updatePipelineSteps();
+    toast('Training stopped', '');
+  } catch (e) {
+    toast('Could not stop — is server running?', 'error');
+  }
+}
+
+function closeTrainConsole() {
+  if (_trainEvtSource) {
+    if (!confirm('Training is still running. Close the console? (Training continues in background.)')) return;
+    // User chose to close but leave training running — unlock the pipeline buttons
+    // so they're not stuck in a locked state with the console hidden.
+    // The SSE stream stays open; training continues in the background.
+    if (_trainRunBtn) { _trainRunBtn.classList.remove('running'); _trainRunBtn = null; }
+    _setPipelineRunning(null, null);
+  }
+  _hideCenterConsole('train-console');
+  _updatePipelineSteps();
+}
+
+// ── Generate Console (live SSE stream for generate_llm.py) ──
+let _generateEvtSource = null;
+let _generateRunBtn    = null;
+let _gcProgressSpan    = null;
+
+
+// Label of the last bar frozen in the generate console — same dedup logic as training console.
+let _gcLastFrozenLabel = null;
+// Flag: have we shown the one-time q4_K fallback summary message yet for this export run?
+let _gcFallbackWarnShown = false;
+
+function _gcBarLabel(txt) {
+  if (txt.trimStart().startsWith('[progress]')) return '[progress]';
+  const m = txt.match(/^([^|%\d]+)/);
+  return m ? m[1].trim().toLowerCase() : txt.substring(0, 40).toLowerCase();
+}
+
+function _gcFreezeProgress(force) {
+  // Same logic as _tcFreezeProgress: force=true preserves mid-progress bars when
+  // a new bar with a different label starts, preventing silent overwrites.
+  if (!_gcProgressSpan || !_gcProgressSpan.parentNode) return;
+  const txt = _gcProgressSpan.textContent || '';
+  const isComplete = /100(\.\d+)?%/.test(txt);
+  if (!force && !isComplete) return;
+
+  const label = _gcBarLabel(txt);
+  _gcProgressSpan.remove();
+  _gcProgressSpan = null;
+
+  // Skip duplicate frozen line if this label was just frozen
+  if (isComplete && label === _gcLastFrozenLabel) return;
+  if (isComplete) _gcLastFrozenLabel = label;
+
+  const frozen = document.createElement('span');
+  frozen.className = 'tl-line tl-info';
+  frozen.textContent = txt.trimEnd();
+  const log = document.getElementById('generate-log');
+  log.appendChild(frozen);
+}
+
+function _gcSetProgressText(text) {
+  const log = document.getElementById('generate-log');
+
+  // Discard duplicate 100% closing summaries from tqdm
+  if (/100(\.\d+)?%/.test(text) && _gcBarLabel(text) === _gcLastFrozenLabel) {
+    return;
+  }
+
+  // Force-freeze the old bar if a new bar with a different label starts
+  if (_gcProgressSpan) {
+    const oldLabel = _gcBarLabel(_gcProgressSpan.textContent || '');
+    const newLabel = _gcBarLabel(text);
+    if (oldLabel !== newLabel) {
+      _gcFreezeProgress(true);  // force=true: preserve even if not at 100%
+    }
+  }
+
+  if (!_gcProgressSpan) {
+    _gcProgressSpan = document.createElement('span');
+    _gcProgressSpan.className = 'tl-line tl-progress';
+  }
+  if (_gcProgressSpan.parentNode !== log || log.lastChild !== _gcProgressSpan) {
+    log.appendChild(_gcProgressSpan);
+  }
+  _gcProgressSpan.textContent = text;
+  log.scrollTop = log.scrollHeight;
+}
+
+function _gcAppendLine(text) {
+  const log = document.getElementById('generate-log');
+  _gcFreezeProgress();
+  const clean = text.replace(/^\r+/, '').trimEnd();
+  if (!clean) return;
+
+  let cls = 'tl-info';
+  if (clean.includes('Saving') || clean.includes('saved') || clean.includes('merged') || clean.includes('complete')) {
+    cls = 'tl-done';
+  } else if (clean.includes('WARNING') || clean.includes('WARN') || clean.includes('warning')) {
+    cls = 'tl-warn';
+  } else if (clean.includes('Error') || clean.includes('error') || clean.includes('Traceback')) {
+    cls = 'tl-error';
+  } else if (clean.startsWith('===') || clean.startsWith('---') || clean.includes('[gen]') || clean.includes('[merge]')) {
+    cls = 'tl-section';
+  }
+
+  const span = document.createElement('span');
+  span.className = 'tl-line ' + cls;
+  span.textContent = clean;
+  if (_gcProgressSpan && _gcProgressSpan.parentNode === log) {
+    log.insertBefore(span, _gcProgressSpan);
+  } else {
+    log.appendChild(span);
+  }
+  log.scrollTop = log.scrollHeight;
+}
+
+// ── Export Hint (GGUF format selector helper) ────────
+// Shows what GGUF type will be auto-selected based on detected VRAM,
+// and an estimated time for the full export (merge + GGUF conversion).
+function _updateExportHint() {
+  const hintEl = document.getElementById('export-gguf-hint');
+  if (!hintEl) return;
+
+  const sel     = document.getElementById('export-gguf-type');
+  const chosen  = sel ? sel.value : 'auto';
+  const vramGb  = _catalogData ? (_catalogData.vram_gb || 0) : 0;
+
+  // Resolve what type will actually be used
+  let resolvedType;
+  if (chosen !== 'auto') {
+    resolvedType = chosen;
+  } else {
+    // q4_k_m is always the best default — mirrors generate_llm.py auto-selection.
+    // f16 needs 16+ GB VRAM headroom just to load for inference (poor experience).
+    // q8_0 is only useful for near-lossless eval work. q4_k_m runs on any hardware.
+    resolvedType = 'q4_k_m';
+  }
+
+  // Human-readable labels for each type
+  const typeLabels = {
+    f16:    'f16 (lossless, ~14gb)',
+    q8_0:   'q8_0 (near-lossless, ~8gb)',
+    q4_k_m: 'q4_k_m (good quality, ~4gb)',
+    q4_0:   'q4_0 (smallest, ~4gb)',
+  };
+
+  // Estimate export time: merge (slow, GPU) + GGUF conversion (CPU)
+  // Merge: ~2–5 min per 7B on 16 GB; conversion: ~3–8 min for 7B
+  let paramsB = 7;
+  const baseModelId = document.getElementById('cfg-base-model') ? document.getElementById('cfg-base-model').value.trim() : '';
+  if (baseModelId && _catalogData) {
+    const cm = _catalogData.models.find(x => x.id === baseModelId);
+    if (cm) paramsB = cm.params_b;
+  }
+
+  // Merge time estimate (GPU, scales with model size and VRAM)
+  let mergeMin;
+  if      (vramGb >= 40) mergeMin = paramsB * 0.2;
+  else if (vramGb >= 24) mergeMin = paramsB * 0.35;
+  else if (vramGb >= 16) mergeMin = paramsB * 0.6;
+  else if (vramGb >= 8)  mergeMin = paramsB * 1.2;
+  else                   mergeMin = paramsB * 2.5;
+
+  // GGUF conversion time estimate (CPU, scales with output size)
+  const sizeGb = { f16: 2.0, q8_0: 1.1, q4_k_m: 0.55, q4_0: 0.55 };
+  const convMin = paramsB * (sizeGb[resolvedType] || 0.7) * 0.4;  // ~0.4 min/GB·B-param
+
+  const totalMin = Math.round(mergeMin + convMin);
+  let timeStr;
+  if (totalMin < 5)       timeStr = 'under 5 min';
+  else if (totalMin < 60) timeStr = '~' + totalMin + ' min';
+  else {
+    const h = Math.floor(totalMin / 60);
+    const m = totalMin % 60;
+    timeStr = '~' + h + 'h' + (m > 0 ? m + 'm' : '');
+  }
+
+  const shortBm = baseModelId ? (baseModelId.includes('/') ? baseModelId.split('/').pop() : baseModelId) : null;
+  const modelStr = shortBm || (paramsB + 'B model');
+
+  let parts = [];
+
+  // Show what format will be used when Auto is selected
+  if (chosen === 'auto') {
+    parts.push('<span style="color:#94a3b8;">Auto selects </span><span style="color:#e2e8f0;">' + typeLabels[resolvedType] + '</span>');
+  }
+
+  // Warn about two-step requirement for q4_k_m / q4_0
+  if (resolvedType === 'q4_k_m' || resolvedType === 'q4_0') {
+    parts.push(
+      '<div style="margin-top:4px;padding:6px 8px;background:#1a1200;border:1px solid #fbbf2433;border-radius:5px;display:flex;flex-direction:column;gap:3px;">' +
+        '<div style="color:#fbbf24;font-weight:600;font-size:0.72rem;">⚠ Requires two steps to produce ' + resolvedType + ':</div>' +
+        '<div style="color:#64748b;padding-left:8px;border-left:2px solid #fbbf2444;">' +
+          '<div><span style="color:#94a3b8;">Step 1</span> — HF SafeTensors → f16 GGUF (~14 GB)</div>' +
+          '<div><span style="color:#94a3b8;">Step 2</span> — llama-quantize → ' + resolvedType + ' (~4 GB)</div>' +
+        '</div>' +
+        '<div style="color:#6b7fa0;font-size:0.68rem;">llama-quantize is installed automatically — no extra setup needed.</div>' +
+      '</div>'
+    );
+  }
+
+  hintEl.style.color = '#94a3b8';
+  hintEl.innerHTML = parts.join('<br>');
+}
+
+function openGenerateConsole(btn) {
+  if (_generateEvtSource) {
+    _showCenterConsole('generate-console');
+    return;
+  }
+
+  // Guard: block export if any pipeline task is running
+  if (_activePipelineTask) {
+    toast('A task is already running — please wait for it to finish', 'error');
+    return;
+  }
+
+  // Reset console
+  document.getElementById('generate-log').innerHTML = '';
+  _gcProgressSpan = null;
+  _gcLastFrozenLabel = null;
+  _gcFallbackWarnShown = false;
+  document.getElementById('btn-generate-stop').style.display = 'inline-block';
+  // Clear the phase label from the previous run
+  const _gcPhaseLabel = document.getElementById('gc-phase-label');
+  if (_gcPhaseLabel) _gcPhaseLabel.textContent = '';
+
+  // Remove any leftover phase bar from a previous run
+  const oldPhaseBar = document.getElementById('gc-phase-bar');
+  if (oldPhaseBar) oldPhaseBar.remove();
+
+  _showCenterConsole('generate-console');
+
+
+  _generateRunBtn = btn;
+  btn.classList.add('running');
+  _setIcon(btn.querySelector('.run-icon'), _ICON_SPIN);
+  _setPipelineRunning('generate', btn);
+
+  // Read GGUF type from the UI selector
+  const ggufTypeSel = document.getElementById('export-gguf-type');
+  const ggufType    = ggufTypeSel ? ggufTypeSel.value : 'auto';
+
+  // Build stream URL — GGUF only, SafeTensors always deleted (chat server uses GGUF directly)
+  const streamParams = new URLSearchParams({ gguf_type: ggufType });
+  _generateEvtSource = new EventSource(API + '/run/generate/stream?' + streamParams.toString());
+
+  // Show what's being exported
+  const ggufLabels = {
+    auto:   'Auto (GPU VRAM)',
+    f16:    'f16 — lossless ~14 GB',
+    q8_0:   'q8_0 — ~8 GB',
+    q4_k_m: 'q4_k_m — ~4 GB',
+    q4_0:   'q4_0 — ~4 GB (smallest)',
+  };
+  _gcAppendLine('📦 Exporting as GGUF (' + (ggufLabels[ggufType] || ggufType) + ') — single file for Ollama, LM Studio & chat tester');
+
+  // Phase tracking — detect which stage of the export we're in and show a
+  // persistent phase banner above the log lines for clear progress feedback.
+  // For q4_k_m/q4_0, there are 4 phases (f16 convert + quantize are separate steps).
+  // For f16/q8_0, there are 3 phases (single-step GGUF conversion).
+  // Resolve actual GGUF type — 'auto' always maps to q4_k_m (same logic as generate_llm.py)
+  const _resolvedGgufType = (ggufType === 'auto') ? 'q4_k_m' : ggufType;
+  const _isTwoStep = (_resolvedGgufType === 'q4_k_m' || _resolvedGgufType === 'q4_0');
+  let _gcPhase = 0;  // 0=connecting, 1=merging, 2=saving, 3=converting/f16, 4=quantizing(two-step only), 5=registering
+
+  let _gcExportFolder = '';  // populated when generate_llm.py prints the Watch line
+  let _gcOllamaTag    = '';  // populated when generate_llm.py prints the OLLAMA_TAG line
+
+  // Phase steps — built dynamically based on whether it's a 2-step GGUF conversion.
+  // For q4_k_m/q4_0: merge → save weights → export f16 GGUF → quantize to final format → (optionally) register with Ollama
+  // For f16/q8_0:    merge → save weights → export directly to final GGUF → (optionally) register with Ollama
+  const phaseSteps = _isTwoStep ? [
+    { icon: '🔀', label: `Step 1 — Merging LoRA adapter into base model`,                                          color: '#7dd3fc' },
+    { icon: '💾', label: `Step 2 — Saving merged weights to disk`,                                                  color: '#a78bfa' },
+    { icon: '📦', label: `Step 3 — Exporting merged model → f16 GGUF  (RAM will spike — this is normal)`,          color: '#38bdf8' },
+    { icon: '🔧', label: `Step 4 — Quantizing f16 GGUF → ${_resolvedGgufType}  (final, ~4 GB)`,                   color: '#fb923c' },
+    { icon: '✅', label: 'Registering with Ollama…',                                                               color: '#34d399' },
+  ] : [
+    { icon: '🔀', label: `Step 1 — Merging LoRA adapter into base model`,                                          color: '#7dd3fc' },
+    { icon: '💾', label: `Step 2 — Saving merged weights to disk`,                                                  color: '#a78bfa' },
+    { icon: '📦', label: `Step 3 — Exporting merged model → ${_resolvedGgufType} GGUF  (RAM will spike — this is normal)`, color: '#38bdf8' },
+    { icon: '✅', label: 'Registering with Ollama…',                                                               color: '#34d399' },
+  ];
+
+  function _setPhase(n, forceUpdate) {
+    if (!forceUpdate && n <= _gcPhase) return;  // only advance forward
+    if (!forceUpdate) _gcPhase = n;
+    const step = phaseSteps[n - 1];
+    if (!step) return;
+    // Update the phase label in the console header (in-place, replaces previous step text)
+    const labelEl = document.getElementById('gc-phase-label');
+    if (labelEl) {
+      labelEl.innerHTML = '<span style="color:' + step.color + ';">' + step.icon + ' ' + step.label + '</span>';
+    }
+    // Status badge is hidden — the center phase label already shows the current step
+  }
+
+  // Always start at Step 1 so the header shows the correct phase immediately
+  _setPhase(1);
+
+  _generateEvtSource.onopen = () => {
+    _gcAppendLine('⏳ Connecting to generate_llm.py...');
+  };
+
+  _generateEvtSource.onmessage = (evt) => {
+    try {
+      const msg = JSON.parse(evt.data);
+      if (msg.type === 'start') {
+        _gcAppendLine('▶ generate_llm.py started');
+      } else if (msg.type === 'progress') {
+        _gcSetProgressText(msg.text);
+      } else if (msg.type === 'line') {
+        if (msg.text.trim()) {
+          const t = msg.text.trim();
+          // Phase detection from log keywords.
+          // Use specific phrases that only appear when the step is actually running,
+          // NOT in the informational header lines printed at startup.
+          if (/\[export\]\s*(Merge device|Loading base model|Allocating model|merging lora)/i.test(t) && _gcPhase < 2) _setPhase(2);
+          else if (/\[export\]\s*(Saving|writing.*safetensor|safetensor.*sav)/i.test(t) && _gcPhase < 2) _setPhase(2);
+          else if (/\[export\]\s*Converting SafeTensors|convert_hf_to_gguf/i.test(t) && _gcPhase < 3) _setPhase(3);
+          else if (_isTwoStep && /\[export\]\s*Step 2.*[Qq]uantiz/i.test(t) && _gcPhase < 4) _setPhase(4);
+          else if (/\[export\]\s*(Registering|Modelfile written|ollama create|ollama run)/i.test(t) && _gcPhase < phaseSteps.length) _setPhase(phaseSteps.length);
+          // Extract export folder from the "Watch this folder" hint line
+          const watchMatch = t.match(/\*{3}\s*Watch this folder for growing files:\s*(.+?)\s*\*{3}/i);
+          if (watchMatch) {
+            _gcExportFolder = watchMatch[1].trim();
+            // Re-render Phase 2 banner with the folder path now that we have it
+            if (_gcPhase >= 2) _setPhase(2);
+          }
+          // Extract Ollama tag from the machine-readable OLLAMA_TAG line
+          const ollamaTagMatch = t.match(/\[export\]\s*OLLAMA_TAG:\s*(\S+)/i);
+          if (ollamaTagMatch) {
+            _gcOllamaTag = ollamaTagMatch[1].trim();
+          }
+          const isProgressBar =
+            /\d+%\s*\|/.test(t) ||
+            /^\s*\d+\/\d+\s*\[/.test(t);
+          // Suppress the flood of "ncols not divisible by 256 → falling back to q5_0/q8_0"
+          // warnings from llama-quantize. These are expected for models with hidden
+          // dimensions that aren't multiples of 256 (e.g. Qwen2.5-0.5B, hidden=896).
+          // The GGUF is still valid — affected layers use q5_0/q8_0 instead of q4_K.
+          // We show one summarizing info line the first time, then suppress the rest.
+          const isFallbackWarn = /ncols\s+\d+\s+not divisible by\s+\d+.*falling back/i.test(t);
+          if (isFallbackWarn) {
+            if (!_gcFallbackWarnShown) {
+              _gcFallbackWarnShown = true;
+              _gcAppendLine('ℹ Some weight matrices use q5_0/q8_0 (model hidden dim not divisible by 256 — normal for small models, GGUF is fully valid)');
+            }
+            // suppress the individual warning lines — there can be hundreds
+          } else if (isProgressBar) {
+            _gcSetProgressText(t);
+          } else {
+            _gcAppendLine(msg.text);
+          }
+        }
+      } else if (msg.type === 'done') {
+        const ok = msg.returncode === 0;
+        // If the process was killed (e.g. Ctrl+C on the server console) but we
+        // already reached phase 3 (GGUF conversion completed), treat it as a
+        // partial success — the GGUF file is on disk and usable.
+        const ggufDone = _gcPhase >= 3;
+        const effectiveOk = ok || (ggufDone && msg.returncode !== 1);
+        if (effectiveOk && !ok) {
+          _gcAppendLine('⚠ Process was interrupted after GGUF was written — file is complete and usable.');
+        } else {
+          _gcAppendLine(ok ? '✓ Export complete! GGUF file ready.' : '✖ generate_llm.py exited with code ' + msg.returncode);
+        }
+        document.getElementById('btn-generate-stop').style.display = 'none';
+        if (_generateRunBtn) {
+          _generateRunBtn.classList.remove('running');
+          _generateRunBtn.classList.add(effectiveOk ? 'success' : 'failed');
+          _setIcon(_generateRunBtn.querySelector('.run-icon'), effectiveOk ? _ICON_CHECK : _ICON_CROSS);
+          _generateRunBtn = null;
+        }
+        // Show result bar with Ollama link and chat test link
+        const bar = document.getElementById('export-result-bar');
+        if (bar) {
+          if (effectiveOk) {
+            bar.style.display = 'block';
+            bar.style.background = '#0d201a';
+            bar.style.border = '1px solid #10b98144';
+            bar.style.color = '#34d399';
+            // Use the actual Ollama tag emitted by generate_llm.py (includes model size + quant type).
+            // Falls back to AI model name if the tag line wasn't received (e.g. Ollama not installed).
+            const ollamaTag = escHtml(_gcOllamaTag || (_activeModel || 'model').toLowerCase().replace(/[^a-z0-9_-]/g, '-'));
+            bar.innerHTML =
+              (ok ? '✅ GGUF exported &amp; Ollama registered.' : '✅ GGUF file written — ready to use.') + '<br>' +
+              '<span style="color:#64748b;">Load in Ollama: <code style="color:#7dd3fc;">ollama run ' + ollamaTag +
+              '</code></span><br>' +
+              '<span style="color:#64748b;">Or click the <strong>Test LLM</strong> button below.</span>';
+          } else {
+            bar.style.display = 'block';
+            bar.style.background = '#1e0a0a';
+            bar.style.border = '1px solid #f8717144';
+            bar.style.color = '#f87171';
+            bar.textContent = '✖ Export failed — check the console output above.';
+          }
+        }
+        toast(ok ? '✓ GGUF export complete!' : effectiveOk ? '⚠ GGUF written (interrupted after write)' : '✖ Export failed', ok ? 'success' : effectiveOk ? '' : 'error');
+        _generateEvtSource.close();
+        _generateEvtSource = null;
+        _setPipelineRunning(null, null);
+        // Delay _updatePipelineSteps slightly so the server's /pipeline-state
+        // endpoint has time to see the newly-written GGUF file on disk.
+        // Without this delay, a race condition can cause export_done=false to
+        // arrive and strip the success checkmark that was just set above.
+        if (effectiveOk) setTimeout(_updatePipelineSteps, 800);
+      } else if (msg.type === 'error') {
+        _gcAppendLine('✖ ' + msg.text);
+        document.getElementById('btn-generate-stop').style.display = 'none';
+        if (_generateRunBtn) {
+          _generateRunBtn.classList.remove('running');
+          _generateRunBtn.classList.add('failed');
+          _setIcon(_generateRunBtn.querySelector('.run-icon'), _ICON_CROSS);
+          _generateRunBtn = null;
+        }
+        _generateEvtSource.close();
+        _generateEvtSource = null;
+        _setPipelineRunning(null, null);
+        _updatePipelineSteps();
+      }
+    } catch (e) { /* ignore parse errors */ }
+  };
+
+  _generateEvtSource.onerror = () => {
+    // Always close on error — prevents browser auto-reconnect from re-triggering onopen
+    // and spawning a second generate_llm.py process.
+    if (_generateEvtSource) {
+      _generateEvtSource.close();
+      _gcAppendLine('⚠ Stream closed.');
+      document.getElementById('btn-generate-stop').style.display = 'none';
+      if (_generateRunBtn) {
+        _generateRunBtn.classList.remove('running');
+        _generateRunBtn = null;
+      }
+      _generateEvtSource = null;
+      _setPipelineRunning(null, null);
+      _updatePipelineSteps();
+    }
+  };
+}
+
+async function stopGenerate() {
+  try {
+    await fetch(API + '/run/generate/stop', { method: 'POST' });
+    _gcAppendLine('⏹ Export stopped by user.');
+    document.getElementById('btn-generate-stop').style.display = 'none';
+    if (_generateRunBtn) {
+      // Reset to normal state — user intentionally stopped, not a failure
+      _generateRunBtn.classList.remove('running', 'failed', 'success');
+      _setIcon(_generateRunBtn.querySelector('.run-icon'), _ICON_PLAY);
+      _generateRunBtn = null;
+    }
+    if (_generateEvtSource) { _generateEvtSource.close(); _generateEvtSource = null; }
+    _setPipelineRunning(null, null);
+    _updatePipelineSteps();
+    toast('Export stopped', '');
+  } catch (e) {
+    toast('Could not stop — is server running?', 'error');
+  }
+}
+
+function closeGenerateConsole() {
+  if (_generateEvtSource) {
+    if (!confirm('Export is still running. Close the console? (Export continues in background.)')) return;
+    // User chose to close but leave export running — unlock the pipeline buttons
+    // so they're not stuck in a locked state with the console hidden.
+    // The SSE stream stays open; export continues in the background.
+    if (_generateRunBtn) { _generateRunBtn.classList.remove('running'); _generateRunBtn = null; }
+    _setPipelineRunning(null, null);
+  }
+  _hideCenterConsole('generate-console');
+  _updatePipelineSteps();
+}
+
+// ── Dynamic training time estimate ───────────────────
+// Updates the "Expect ~X min" text in the Pipeline tab based on the
+// selected base model's param count, the user's VRAM, and epoch count.
+function _updateTimeEstimate() {
+  const el = document.getElementById('pipeline-time-estimate');
+  if (!el) return;
+
+  const baseModelId = document.getElementById('cfg-base-model') ? document.getElementById('cfg-base-model').value.trim() : '';
+  const epochs = parseInt(document.getElementById('ts-epochs') ? document.getElementById('ts-epochs').value : '3') || 3;
+  const quant  = document.getElementById('ts-quant') ? document.getElementById('ts-quant').value : '4bit';
+
+  // Get params_b and vram from catalog / system info
+  let paramsB = 7;  // default assumption
+  let vramGb  = 0;
+
+  if (baseModelId && _catalogData) {
+    const cm = _catalogData.models.find(x => x.id === baseModelId);
+    if (cm) paramsB = cm.params_b;
+    vramGb = _catalogData.vram_gb || 0;
+  }
+
+  // Estimate minutes per epoch based on model size, VRAM, and quant mode.
+  // These are empirical approximations for a single GPU:
+  //   4-bit QLoRA on 16 GB (RTX 4080/5070 Ti): ~0.8 min/B-param/epoch for small datasets (~500 ex)
+  //   Full FP16/BF16: ~1.5 min/B-param/epoch
+  // Scaled by VRAM headroom — more VRAM = larger batches = faster.
+  let minPerEpoch;
+  const scale4bit = quant === '4bit';
+
+  if (scale4bit) {
+    // 4-bit: ~0.5–1 min per B param per epoch on 16 GB card
+    if      (vramGb >= 40) minPerEpoch = paramsB * 0.3;
+    else if (vramGb >= 24) minPerEpoch = paramsB * 0.5;
+    else if (vramGb >= 16) minPerEpoch = paramsB * 0.8;
+    else if (vramGb >= 10) minPerEpoch = paramsB * 1.2;
+    else                   minPerEpoch = paramsB * 2.0;
+  } else {
+    // Full precision: ~1–2 min per B param per epoch
+    if      (vramGb >= 40) minPerEpoch = paramsB * 0.6;
+    else if (vramGb >= 24) minPerEpoch = paramsB * 1.0;
+    else                   minPerEpoch = paramsB * 1.5;
+  }
+
+  const totalMin = Math.round(minPerEpoch * epochs);
+  const shortBm  = baseModelId ? (baseModelId.includes('/') ? baseModelId.split('/').pop() : baseModelId) : null;
+  const modelStr = shortBm || (paramsB + 'B model');
+  const vramStr  = vramGb > 0 ? vramGb + ' GB VRAM' : 'your GPU';
+  const quantStr = quant === '4bit' ? '4-bit QLoRA' : quant === 'bf16' ? 'BF16' : 'FP16';
+
+  let estimate;
+  if (totalMin < 5)        estimate = 'under 5 min';
+  else if (totalMin < 60)  estimate = '~' + totalMin + ' min';
+  else {
+    const h = Math.floor(totalMin / 60);
+    const m = totalMin % 60;
+    estimate = '~' + h + 'h' + (m > 0 ? m + 'm' : '');
+  }
+
+  el.textContent = `Expect ${estimate} for ${modelStr} (${quantStr}, ${epochs} epoch${epochs !== 1 ? 's' : ''}, ${vramStr}).`;
+}
+
+// ── Updates tab — package check & upgrade ────────────
+let _upgradeEvtSource = null;
+
+function _updStatus(msg, color) {
+  const el = document.getElementById('upd-status');
+  el.style.display = msg ? 'block' : 'none';
+  el.style.color   = color || '#64748b';
+  el.textContent   = msg;
+}
+
+async function checkUpdates(btn) {
+  _updStatus('🔍 Checking PyPI for updates (may take ~10 sec)…', '#fbbf24');
+  btn.disabled = true;
+
+  try {
+    const r = await fetch(API + '/packages');
+    const j = await r.json();
+    btn.disabled = false;
+
+    if (j.error) {
+      _updStatus('Error: ' + j.error, '#f87171');
+      return;
+    }
+
+    // Auto-detect torch CUDA version from system-info and pre-select correct index
+    _autoSelectTorchIndex();
+
+    const pkgs = j.packages || [];
+    const outdated = pkgs.filter(p => p.outdated);
+    const missing  = pkgs.filter(p => p.missing);
+
+    _updStatus(
+      outdated.length || missing.length
+        ? `⚠ ${outdated.length} outdated, ${missing.length} missing`
+        : '✅ All packages up to date',
+      outdated.length || missing.length ? '#fbbf24' : '#34d399'
+    );
+
+    // Render package list
+    const card = document.getElementById('upd-pkg-card');
+    const list = document.getElementById('upd-pkg-list');
+    card.style.display = 'block';
+    list.innerHTML = '';
+
+    // Sort: missing first, then outdated, then up-to-date
+    const sorted = [...pkgs].sort((a, b) => {
+      const rank = p => p.missing ? 0 : p.outdated ? 1 : 2;
+      return rank(a) - rank(b);
+    });
+
+    sorted.forEach(pkg => {
+      const isMissing  = pkg.missing;
+      const isOutdated = pkg.outdated && !pkg.missing;
+      const isOk       = !isMissing && !isOutdated;
+
+      // Status badge styling
+      const badgeBg    = isMissing  ? '#3a0e0e' : isOutdated ? '#2d1f00' : '#0a2018';
+      const badgeBorder= isMissing  ? '#f8717166' : isOutdated ? '#fbbf2466' : '#10b98133';
+      const badgeColor = isMissing  ? '#f87171'   : isOutdated ? '#fbbf24'   : '#34d399';
+      const badgeIcon  = isMissing  ? '✗'         : isOutdated ? '⚠'         : '✓';
+      const statusText = isMissing  ? 'not installed'
+                       : isOutdated ? `${pkg.installed} → ${pkg.latest}`
+                       : pkg.installed;
+
+      // Package name color — dim if OK, bright if needs attention
+      const nameColor  = isOk ? '#4a6080' : '#c0cfe0';
+
+      const row = document.createElement('div');
+      row.style.cssText = `display:flex;justify-content:space-between;align-items:center;padding:4px 6px;border-radius:5px;gap:8px;margin-bottom:2px;background:${isMissing ? '#1a0a0a' : isOutdated ? '#151000' : 'transparent'};border:1px solid ${isMissing ? '#f8717122' : isOutdated ? '#fbbf2422' : 'transparent'};`;
+      row.innerHTML = `
+        <span style="font-size:0.75rem;color:${nameColor};font-family:'Consolas','Courier New',monospace;font-weight:${isOk ? '400' : '600'};">${escHtml(pkg.name)}</span>
+        <span style="font-size:0.7rem;color:${badgeColor};background:${badgeBg};border:1px solid ${badgeBorder};border-radius:4px;padding:1px 7px;white-space:nowrap;font-weight:600;">
+          ${badgeIcon} ${escHtml(statusText)}
+        </span>
+      `;
+      list.appendChild(row);
+    });
+
+    // Enable Upgrade All only if there are outdated or missing packages
+    const upgradeBtn = document.getElementById('btn-upgrade-all');
+    if (upgradeBtn) {
+      const hasUpdates = !!(outdated.length || missing.length);
+      upgradeBtn.disabled = !hasUpdates;
+      upgradeBtn.title = hasUpdates
+        ? `${outdated.length + missing.length} package(s) need updating`
+        : 'All packages are up to date';
+      // Switch to primary (bright) when updates are available, secondary (dim) when not
+      upgradeBtn.classList.toggle('btn-primary', hasUpdates);
+      upgradeBtn.classList.toggle('btn-secondary', !hasUpdates);
+    }
+
+    if (outdated.length || missing.length) {
+      toast(`⚠ ${outdated.length + missing.length} package(s) need updating — click Upgrade All`, '');
+    } else {
+      toast('✅ All packages are up to date', 'success');
+    }
+  } catch (e) {
+    btn.disabled = false;
+    _updStatus('Server offline — start the server first', '#f87171');
+  }
+}
+
+async function upgradeAll(btn) {
+  if (_upgradeEvtSource) {
+    // Already running — just show the console
+  _showCenterConsole('upgrade-console');
+    return;
+  }
+
+  btn.disabled = true;
+  _autoSelectTorchIndex();
+  const torchIndex = document.getElementById('upd-torch-index').value;
+
+  // Open the full-screen upgrade console overlay
+  const log = document.getElementById('upgrade-log');
+  log.innerHTML = '';
+  document.getElementById('btn-upgrade-stop').style.display = 'inline-block';
+  document.getElementById('btn-upgrade-restart').style.display = 'none';
+  _showCenterConsole('upgrade-console');
+  _updStatus('⬆ Running pip upgrade…', '#38bdf8');
+
+  function _logLine(text, color) {
+    const span = document.createElement('span');
+    span.className = 'tl-line';
+    span.style.color = color || '#64748b';
+    span.textContent = text;
+    log.appendChild(span);
+    log.scrollTop = log.scrollHeight;
+  }
+
+  let _actuallyInstalled = false;  // true if pip installed/upgraded at least one package
+
+  const params = new URLSearchParams({ torch_index: torchIndex });
+  _upgradeEvtSource = new EventSource(API + '/update/stream?' + params.toString());
+
+  _upgradeEvtSource.onmessage = (evt) => {
+    try {
+      const msg = JSON.parse(evt.data);
+      if (msg.type === 'start') {
+        _logLine('▶ Upgrading ' + (msg.packages || []).length + ' packages…', '#7dd3fc');
+      } else if (msg.type === 'line') {
+        const t = msg.text || '';
+        // Detect actual installs — pip prints "Successfully installed X" when it upgrades something
+        if (t.startsWith('Successfully installed')) _actuallyInstalled = true;
+        const color = t.startsWith('Successfully') ? '#34d399'
+                    : t.startsWith('ERROR') || t.startsWith('error') ? '#f87171'
+                    : t.startsWith('WARNING') ? '#fbbf24'
+                    : t.startsWith('$') ? '#7dd3fc'
+                    : '#64748b';
+        _logLine(t, color);
+      } else if (msg.type === 'ok') {
+        _logLine(msg.text, '#34d399');
+      } else if (msg.type === 'warn') {
+        _logLine(msg.text, '#fbbf24');
+      } else if (msg.type === 'error') {
+        _logLine('✖ ' + msg.text, '#f87171');
+      } else if (msg.type === 'done') {
+        document.getElementById('btn-upgrade-stop').style.display = 'none';
+        _upgradeEvtSource.close();
+        _upgradeEvtSource = null;
+        btn.disabled = false;
+        if (_actuallyInstalled) {
+          _logLine('✅ Packages upgraded — restart to apply.', '#34d399');
+          _logLine('⚠ Restart the server now to apply the new versions.', '#fbbf24');
+          document.getElementById('btn-upgrade-restart').style.display = 'inline-block';
+          _updStatus('✅ Upgrade complete — restart server to apply', '#34d399');
+          toast('✅ Packages upgraded — click Restart Server', 'success');
+        } else {
+          _logLine('✅ All packages already up to date — no changes made.', '#34d399');
+          _updStatus('✅ All packages already up to date', '#34d399');
+          toast('✅ All packages already up to date', 'success');
+        }
+        // Re-check to update the package list in the side panel
+        setTimeout(() => {
+          const checkBtn = document.getElementById('btn-check-updates');
+          if (checkBtn) checkUpdates(checkBtn);
+        }, 1500);
+      }
+    } catch (e) { /* ignore parse errors */ }
+  };
+
+  _upgradeEvtSource.onerror = () => {
+    // Always close on error — prevents browser auto-reconnect from re-triggering onopen
+    // and spawning a second upgrade process.
+    if (_upgradeEvtSource) {
+      _upgradeEvtSource.close();
+      _logLine('⚠ Stream disconnected', '#fbbf24');
+      _updStatus('⚠ Upgrade stream disconnected', '#fbbf24');
+      _upgradeEvtSource = null;
+      btn.disabled = false;
+    }
+  };
+}
+
+function stopUpgrade() {
+  if (_upgradeEvtSource) {
+    _upgradeEvtSource.close();
+    _upgradeEvtSource = null;
+  }
+  document.getElementById('btn-upgrade-stop').style.display = 'none';
+  _updStatus('⏹ Upgrade stopped by user', '#f87171');
+  const upgradeBtn = document.querySelector('#tab-updates .btn-primary');
+  if (upgradeBtn) upgradeBtn.disabled = false;
+  toast('Upgrade stopped', 'error');
+}
+
+function closeUpgradeConsole() {
+  if (_upgradeEvtSource) {
+    if (!confirm('Upgrade is still running. Close the console? (Upgrade continues in background.)')) return;
+  }
+  _hideCenterConsole('upgrade-console');
+}
+
+async function restartServer() {
+  // In desktop/embedded mode (launch_app.bat), the Flask server runs as a
+  // daemon thread inside the PyQt6 process.  Killing it would close the window.
+  // The server returns {embedded: true} in that case — we just reload the page
+  // immediately instead of waiting 4 seconds for a new server process to start.
+  // Update any visible restart button (may be in the overlay or the status bar)
+  document.querySelectorAll('.btn-restart-server').forEach(b => {
+    b.textContent = '⏳ Restarting…';
+    b.disabled = true;
+  });
+  try {
+    const _restartResp = await fetch(API + '/restart', { method: 'POST' });
+    const _restartData = await _restartResp.json().catch(() => ({}));
+    if (_restartData.embedded) {
+      // Desktop mode: server stays up, just reload the page immediately
+      toast('🔄 Reloading UI…', 'success');
+      setTimeout(() => location.reload(), 500);
+      return;
+    }
+  } catch (e) { /* expected — server closes connection on restart */ }
+  toast('🔄 Server restarting — page will reload in 4 seconds…', '');
+  setTimeout(() => location.reload(), 4000);
+}
+
+function _autoSelectTorchIndex() {
+  // Pick the right PyTorch index URL based on the CUDA compute version cached
+  // from /system-info (set in loadSystemInfo → _detectedCudaCompute).
+  // Falls back to cu128 (latest) if CUDA was not detected.
+  try {
+    const cudaVer = _detectedCudaCompute;
+    if (!cudaVer) return;  // no CUDA GPU — leave default (cu128)
+    const parts = cudaVer.split('.');
+    const major = parseInt(parts[0]) || 0;
+    const minor = parseInt(parts[1]) || 0;
+    const sel = document.getElementById('upd-torch-index');
+    if (major < 12 || (major === 12 && minor < 1)) {
+      sel.value = 'https://download.pytorch.org/whl/cu118';
+    } else if (major === 12 && minor < 4) {
+      sel.value = 'https://download.pytorch.org/whl/cu121';
+    } else if (major === 12 && minor < 8) {
+      sel.value = 'https://download.pytorch.org/whl/cu124';
+    } else {
+      sel.value = 'https://download.pytorch.org/whl/cu128';
+    }
+  } catch (e) { /* ignore — leave default */ }
+}
+
+// ── Live System Monitor ───────────────────────────────
+let _monitorTimer = null;
+
+function _monitorBar(label, pct, used, total, color) {
+  const safePct = Math.min(100, Math.max(0, pct || 0));
+  const barColor = safePct > 85 ? '#f87171' : safePct > 65 ? '#fbbf24' : color;
+  const usageStr = (used != null && total != null) ? `${used} / ${total} GB` : (pct != null ? `${pct}%` : '—');
+  return `
+    <div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:2px;">
+        <span style="color:#94a3b8;font-size:0.82rem;">${label}</span>
+        <span style="color:var(--text-primary);font-size:0.82rem;font-weight:600;">${usageStr}</span>
+      </div>
+      <div style="background:var(--bg-input);border-radius:3px;height:5px;overflow:hidden;">
+        <div style="width:${safePct}%;height:100%;background:${barColor};border-radius:3px;transition:width 0.5s ease;"></div>
+      </div>
+    </div>`;
+}
+
+async function _pollMonitor() {
+  const el = document.getElementById('sys-monitor-content');
+  if (!el) return;
+  try {
+    const r = await fetch(API + '/system-monitor');
+    if (!r.ok) throw new Error();
+    const d = await r.json();
+    let html = '';
+    if (d.gpu_temp_c != null) {
+      const tempColor = d.gpu_temp_c >= 85 ? '#f87171' : d.gpu_temp_c >= 70 ? '#fbbf24' : '#34d399';
+      html += `<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+        <span style="color:#94a3b8;font-size:0.82rem;white-space:nowrap;flex-shrink:0;">GPU Temp</span>
+        <span style="color:${tempColor};font-weight:600;font-size:0.82rem;">${d.gpu_temp_c}°C</span>
+      </div>`;
+    }
+    if (d.gpu_pct != null) {
+      html += _monitorBar('GPU', d.gpu_pct, null, null, '#a78bfa');
+    }
+    if (d.vram_used_gb != null) {
+      html += _monitorBar('VRAM', d.vram_pct, d.vram_used_gb, d.vram_total_gb, '#38bdf8');
+    }
+    if (d.cpu_pct != null) {
+      html += _monitorBar('CPU', d.cpu_pct, null, null, '#34d399');
+    }
+    if (d.ram_used_gb != null) {
+      html += _monitorBar('RAM', d.ram_pct, d.ram_used_gb, d.ram_total_gb, '#7dd3fc');
+    }
+    if (!html) html = '<div style="color:#94a3b8;font-size:0.82rem;">No GPU detected</div>';
+    el.innerHTML = html;
+  } catch (e) {
+    el.innerHTML = '<div style="color:#94a3b8;font-size:0.82rem;">Server offline</div>';
+  }
+}
+
+function _startMonitor() {
+  _pollMonitor();
+  if (_monitorTimer) clearInterval(_monitorTimer);
+  _monitorTimer = setInterval(_pollMonitor, 3000);
+}
+
+// ── Sidebar tab switching ─────────────────────────────
+function switchSidebarTab(name, el) {
+  document.querySelectorAll('.stab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.sidebar-page').forEach(p => p.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('stab-' + name).classList.add('active');
+}
+
+// ── Center pane console show/hide ────────────────────
+function _showCenterConsole(id) {
+  document.getElementById('center-idle').style.display = 'none';
+  ['train-console','generate-console','upgrade-console'].forEach(cid => {
+    const el = document.getElementById(cid);
+    if (el) el.style.display = (cid === id) ? 'flex' : 'none';
+  });
+}
+function _hideCenterConsole(id) {
+  document.getElementById(id).style.display = 'none';
+  // Show idle screen if no other console is visible
+  const anyOpen = ['train-console','generate-console','upgrade-console'].some(
+    cid => document.getElementById(cid) && document.getElementById(cid).style.display === 'flex'
+  );
+  if (!anyOpen) document.getElementById('center-idle').style.display = 'flex';
+}
+
+// ── Tab switching ─────────────────────────────────────
+function switchTab(name, el) {
+  document.querySelectorAll('.ptab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.panel-page').forEach(p => p.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('tab-' + name).classList.add('active');
+}
+
+// ── Theme toggle ──────────────────────────────────────
+function toggleTheme() {
+  const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+  const newTheme = isLight ? 'dark' : 'light';
+  _applyTheme(newTheme);
+  localStorage.setItem('studio_theme', newTheme);
+}
+
+function _applyTheme(theme) {
+  const btn = document.getElementById('btn-theme');
+  if (theme === 'light') {
+    document.documentElement.setAttribute('data-theme', 'light');
+    // In light mode, show 🌙 so user knows clicking will go to dark
+    if (btn) { btn.textContent = '🌙'; btn.title = 'Switch to dark mode'; }
+  } else {
+    document.documentElement.removeAttribute('data-theme');
+    // In dark mode, show ☀️ so user knows clicking will go to light
+    if (btn) { btn.textContent = '☀️'; btn.title = 'Switch to light mode'; }
+  }
+}
+
+// ── Init ──────────────────────────────────────────────
+// Sequence: system-info first (sets GPU-based defaults + recommended model),
+// then model fields (saved settings override defaults, catalog syncs to saved base model).
+// Dataset and knowledge stats load in parallel since they're independent.
+(async function init() {
+  // Apply saved theme immediately before anything else renders
+  const savedTheme = localStorage.getItem('studio_theme') || 'dark';
+  _applyTheme(savedTheme);
+
+  // Load dataset + knowledge stats in parallel (don't block UI setup)
+  loadDataset().catch(() => {
+    const stored = localStorage.getItem('popai_examples');
+    if (stored) {
+      try {
+        const data = JSON.parse(stored);
+        examples = data.map(ex => ({ id: nextId++, question: ex.question, answer: ex.answer, saved: true }));
+        renderList(); updateStats();
+      } catch {}
+    }
+  });
+  loadKnowledgeStats();
+
+  // 1. Load system info first — sets GPU-based training defaults (quant, batch, seq)
+  //    and stores recommended_base in _catalogData (via loadModelCatalog called inside loadSystemInfo).
+  await loadSystemInfo();
+
+  // 2. Load model catalog so recommended_base is available before loadModelFields runs
+  await loadModelCatalog();
+
+  // 3. Now load model fields — if saved train_settings exist they override the system defaults,
+  //    if no base_model is saved the recommended model gets auto-selected.
+  await loadModels();
+
+  // 4. Start the live system monitor (polls /system-monitor every 3 seconds)
+  _startMonitor();
+
+  // Always hide the export result bar on page load — it will be re-shown by
+  // _updatePipelineSteps() if export_done is true, or after a fresh export run.
+  // This prevents stale bar content (from a previous export session) from
+  // persisting when the page is refreshed or the server restarts.
+  const _initExportBar = document.getElementById('export-result-bar');
+  if (_initExportBar) _initExportBar.style.display = 'none';
+
+  // 5. If training was already running before the page was refreshed, reconnect
+  //    FIRST — this sets _activePipelineTask so _updatePipelineSteps (step 6) can
+  //    correctly lock the pipeline buttons while training is in progress.
+  //    Order matters: reconnect must run before pipeline state is painted, otherwise
+  //    _activePipelineTask is null and the Train/Generate/Chat buttons get their
+  //    idle state applied, only to be immediately overridden by the reconnect lock.
+  try {
+    const _statusR = await fetch(API + '/run/train/status');
+    if (_statusR.ok) {
+      const _statusJ = await _statusR.json();
+      if (_statusJ.running) {
+        _reconnectTrainStream();
+      } else {
+        // Training is not running — if the console is visible, clarify it's stale
+        const trainConsole = document.getElementById('train-console');
+        if (trainConsole && trainConsole.style.display === 'flex') {
+          // Hide the Stop button — nothing is running
+          document.getElementById('btn-train-stop').style.display = 'none';
+          // Append a clear separator so the user knows this is a new server session
+          _tcAppendLine('─────────────────────────────────────');
+          _tcAppendLine('⏹ Server restarted — no training in progress. Log above is from the previous session.');
+          _tcAppendLine('Press ▶ Train Model (LoRA) to start a new run, or 🗑 Reset to start clean.');
+        }
+      }
+    }
+  } catch (e) { /* server offline — skip reconnect */ }
+
+  // 6. Check pipeline state to enable/disable steps based on completed artifacts.
+  //    Awaited so it completes with the correct _activePipelineTask value (set above).
+  //    Without await, the fetch races against _reconnectTrainStream and the pipeline
+  //    buttons show the wrong state on first load (training_done / export_done ignored).
+  await _updatePipelineSteps();
+})();
+</script>
+</body>
+</html>

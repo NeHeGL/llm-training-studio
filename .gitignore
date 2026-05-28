@@ -1,0 +1,70 @@
+# Python
+# __pycache__ is consolidated at the project root via PYTHONPYCACHEPREFIX in launch.bat
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+*.whl
+*.pyc
+
+# Virtual environments
+venv/
+.venv/
+env/
+.env/
+
+# Logs
+*.log
+
+# Generated output — rebuilt from source / training data, no need to track
+# Model weights and large ML artifacts — generated during training/export, not tracked
+*.gguf
+*.safetensors
+*.bin
+*.pt
+*.ckpt
+
+# Per-model generated folders (lora adapters, datasets, gguf exports)
+models/*/lora/
+models/*/dataset/
+models/*/gguf/
+
+# All models except the included example
+models/*/
+!models/TestAI/
+
+# Local base model snapshot used for chat testing (downloaded separately)
+chat_test/*/
+
+# Training artifacts and local dataset caches
+train/dataset/
+train/*_lora/
+
+# User training data (not part of the public example)
+training_data/
+
+# llama.cpp binaries — downloaded automatically by tools/install_llama_quantize.ps1
+# Do not commit these; users run the install script to get them.
+tools/llama/
+
+# Personal scripts — not part of the public project
+tools/backup.ps1
+
+# Backups — generated locally, not part of the public project
+backups/
+
+# PyQt6 desktop UI — Python cache (regenerated automatically)
+desktop-view/__pycache__/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db

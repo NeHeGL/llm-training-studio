@@ -1,0 +1,734 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LLM Chat — NeHe Productions</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  background: #0d0d14;
+  color: #e8e8f0;
+  height: 100vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+#app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+/* ── Header ─────────────────────────────────────────── */
+#header {
+  background: linear-gradient(135deg, #1a0a2e 0%, #16213e 100%);
+  border-bottom: 1px solid #7c3aed44;
+  padding: 14px 24px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-shrink: 0;
+}
+
+#logo {
+  font-size: 1.6rem;
+  font-weight: 800;
+  background: linear-gradient(90deg, #a78bfa, #f472b6);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  letter-spacing: -0.5px;
+}
+
+#subtitle {
+  color: #94a3b8;
+  font-size: 0.85rem;
+  flex: 1;
+}
+
+#status-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.82rem;
+}
+
+#status-dot {
+  width: 9px; height: 9px;
+  border-radius: 50%;
+  background: #ef4444;
+  transition: background 0.4s;
+  box-shadow: 0 0 6px #ef444488;
+}
+#status-dot.online { background: #22c55e; box-shadow: 0 0 6px #22c55e88; }
+
+#status-text { color: #94a3b8; }
+
+#clear-btn {
+  background: #1e1e3a;
+  color: #a78bfa;
+  border: 1px solid #7c3aed44;
+  border-radius: 8px;
+  padding: 5px 14px;
+  cursor: pointer;
+  font-size: 0.82rem;
+  transition: all 0.2s;
+}
+#clear-btn:hover { background: #7c3aed22; border-color: #a78bfa; }
+
+/* ── Main area ───────────────────────────────────────── */
+#main {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* ── Chat panel (full width now) ─────────────────────── */
+#chat-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: #0d0d14;
+}
+
+#messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  scroll-behavior: smooth;
+}
+
+#messages::-webkit-scrollbar { width: 5px; }
+#messages::-webkit-scrollbar-track { background: transparent; }
+#messages::-webkit-scrollbar-thumb { background: #7c3aed44; border-radius: 10px; }
+
+.msg {
+  display: flex;
+  flex-direction: column;
+  max-width: 92%;
+  animation: fadeIn 0.25s ease;
+}
+@keyframes fadeIn { from { opacity:0; transform: translateY(6px); } to { opacity:1; transform:none; } }
+
+.msg.user { align-self: flex-end; align-items: flex-end; }
+.msg.ai   { align-self: flex-start; align-items: flex-start; }
+
+.msg-label {
+  font-size: 0.7rem;
+  color: #64748b;
+  margin-bottom: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.msg-bubble {
+  padding: 10px 14px;
+  border-radius: 14px;
+  font-size: 0.9rem;
+  line-height: 1.6;
+  word-break: break-word;
+  overflow-wrap: break-word;
+}
+
+/* Markdown-rendered content inside bubbles */
+.msg-bubble p { margin: 0 0 0.5em; }
+.msg-bubble p:last-child { margin-bottom: 0; }
+.msg-bubble strong { font-weight: 700; }
+.msg-bubble em { font-style: italic; }
+.msg-bubble code {
+  font-family: 'Consolas', 'Fira Code', monospace;
+  background: #0d0d1a;
+  border: 1px solid #7c3aed33;
+  border-radius: 4px;
+  padding: 1px 5px;
+  font-size: 0.85em;
+}
+.msg-bubble pre {
+  background: #0d0d1a;
+  border: 1px solid #7c3aed33;
+  border-radius: 8px;
+  padding: 10px 12px;
+  overflow-x: auto;
+  font-size: 0.82em;
+  margin: 6px 0;
+  white-space: pre;
+}
+.msg-bubble pre code {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: inherit;
+}
+.msg-bubble ul, .msg-bubble ol {
+  padding-left: 1.4em;
+  margin: 4px 0;
+}
+.msg-bubble li { margin: 2px 0; }
+.msg-bubble h1, .msg-bubble h2, .msg-bubble h3 {
+  font-weight: 700;
+  margin: 8px 0 4px;
+  line-height: 1.3;
+}
+.msg-bubble h1 { font-size: 1.1em; }
+.msg-bubble h2 { font-size: 1.0em; }
+.msg-bubble h3 { font-size: 0.95em; }
+
+/* Collapsible long responses */
+.msg-bubble-wrap {
+  position: relative;
+}
+.msg-bubble-wrap.collapsed .msg-bubble {
+  max-height: 320px;
+  overflow: hidden;
+}
+.msg-bubble-wrap.collapsed::after {
+  content: '';
+  position: absolute;
+  bottom: 32px;
+  left: 0; right: 0;
+  height: 60px;
+  background: linear-gradient(transparent, #1e1e3a);
+  pointer-events: none;
+  border-radius: 0 0 14px 14px;
+}
+.msg-bubble-wrap.collapsed.user-bubble::after {
+  background: linear-gradient(transparent, #6d28d9);
+}
+.show-more-btn {
+  display: block;
+  width: 100%;
+  text-align: center;
+  background: none;
+  border: 1px solid #7c3aed44;
+  border-radius: 0 0 14px 14px;
+  color: #a78bfa;
+  font-size: 0.78rem;
+  cursor: pointer;
+  padding: 4px 0;
+  margin-top: -1px;
+  transition: background 0.2s;
+}
+.show-more-btn:hover { background: #7c3aed22; }
+
+.msg.user .msg-bubble {
+  background: linear-gradient(135deg, #7c3aed, #6d28d9);
+  color: #fff;
+  border-bottom-right-radius: 4px;
+}
+
+.msg.ai .msg-bubble {
+  background: #1e1e3a;
+  color: #e2e8f0;
+  border: 1px solid #7c3aed22;
+  border-bottom-left-radius: 4px;
+}
+
+.msg.ai.thinking .msg-bubble {
+  color: #64748b;
+  font-style: italic;
+}
+
+.attachment-preview {
+  margin-top: 6px;
+  border-radius: 8px;
+  overflow: hidden;
+}
+.attachment-preview img {
+  max-width: 180px;
+  max-height: 120px;
+  border-radius: 8px;
+  display: block;
+}
+.attachment-preview .file-tag {
+  background: #7c3aed22;
+  border: 1px solid #7c3aed44;
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 0.78rem;
+  color: #a78bfa;
+}
+
+/* ── Memory-captured bubble style ────────────────────── */
+.msg.ai.memory-captured .msg-bubble {
+  background: #0f2830;
+  border-color: #22d3ee55;
+  box-shadow: 0 0 12px #22d3ee22;
+}
+.memory-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 6px;
+  font-size: 0.7rem;
+  color: #22d3ee;
+  opacity: 0.8;
+  letter-spacing: 0.3px;
+}
+
+/* ── Footer / input area ─────────────────────────────── */
+#footer {
+  flex-shrink: 0;
+  border-top: 1px solid #7c3aed22;
+  background: #0d0d14;
+}
+
+#drop-zone {
+  padding: 12px 16px;
+  transition: background 0.2s;
+}
+#drop-zone.drag-over {
+  background: #7c3aed11;
+  border-top-color: #a78bfa;
+}
+
+#input-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+}
+
+#attach-area {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-width: 0;
+}
+
+.chip {
+  background: #7c3aed22;
+  border: 1px solid #7c3aed55;
+  border-radius: 20px;
+  padding: 3px 10px;
+  font-size: 0.75rem;
+  color: #a78bfa;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.chip .chip-x {
+  cursor: pointer;
+  color: #f472b6;
+  font-weight: bold;
+  line-height: 1;
+}
+
+#input {
+  flex: 1;
+  background: #1a1a2e;
+  color: #e2e8f0;
+  border: 1px solid #7c3aed44;
+  border-radius: 12px;
+  padding: 12px 16px;
+  font-size: 0.95rem;
+  resize: none;
+  min-height: 48px;
+  max-height: 160px;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.2s;
+  overflow-y: auto;
+}
+#input:focus { border-color: #a78bfa; }
+#input::placeholder { color: #475569; }
+
+#send-btn {
+  background: linear-gradient(135deg, #7c3aed, #a855f7);
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  padding: 12px 20px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+  min-height: 48px;
+}
+#send-btn:hover { background: linear-gradient(135deg, #6d28d9, #9333ea); transform: translateY(-1px); }
+#send-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+#drop-hint {
+  text-align: center;
+  font-size: 0.72rem;
+  color: #334155;
+  margin-top: 6px;
+}
+</style>
+</head>
+<body>
+<div id="app">
+  <header id="header">
+    <div id="logo">🤖 LLM Chat</div>
+    <div id="subtitle">NeHe Productions · <span id="model-name-label">Testing...</span></div>
+    <div id="status-bar">
+      <span id="status-dot"></span>
+      <span id="status-text">Connecting...</span>
+      <button id="clear-btn" onclick="clearChat()">Clear Chat</button>
+    </div>
+  </header>
+  <main id="main">
+    <div id="chat-panel">
+      <div id="messages"></div>
+    </div>
+  </main>
+  <footer id="footer">
+    <div id="drop-zone" id="drop-zone">
+      <div id="input-row">
+        <div id="attach-area" id="attach-area"></div>
+        <textarea id="input" placeholder="Ask anything..." rows="1"></textarea>
+        <button id="send-btn" onclick="sendMessage()">Send ➤</button>
+      </div>
+      <div id="drop-hint">📎 Drop images or text files here to attach</div>
+    </div>
+  </footer>
+</div>
+<script>
+const API = 'http://localhost:5000';
+let history = [];
+let attachments = []; // {name, type, data} — data is base64 for images, text string for text
+
+// ── Status check ─────────────────────────────────────
+let _modelName = '';
+
+async function checkStatus() {
+  try {
+    const r = await fetch(API + '/status', { signal: AbortSignal.timeout(3000) });
+    const j = await r.json();
+    // Update model name label in subtitle whenever we get it from the server
+    const name = j.model_name || '';
+    if (name && name !== _modelName) {
+      _modelName = name;
+      document.getElementById('model-name-label').textContent = 'Testing ' + _modelName;
+    } else if (!name && !_modelName) {
+      document.getElementById('model-name-label').textContent = 'Testing...';
+    }
+    setStatus(j.ready ? 'online' : 'loading', j.message || (j.ready ? 'Model ready' : 'Loading model...'));
+  } catch {
+    setStatus('offline', 'Server offline');
+  }
+}
+
+function setStatus(state, msg) {
+  const dot  = document.getElementById('status-dot');
+  const text = document.getElementById('status-text');
+  dot.className  = state === 'online' ? 'online' : '';
+  text.textContent = msg;
+}
+
+// ── Attachments ──────────────────────────────────────
+const dropZone  = document.getElementById('drop-zone');
+const attachArea = document.getElementById('attach-area');
+
+['dragenter','dragover'].forEach(e => dropZone.addEventListener(e, ev => {
+  ev.preventDefault(); dropZone.classList.add('drag-over');
+}));
+['dragleave','drop'].forEach(e => dropZone.addEventListener(e, ev => {
+  ev.preventDefault(); dropZone.classList.remove('drag-over');
+}));
+dropZone.addEventListener('drop', ev => {
+  ev.preventDefault();
+  [...ev.dataTransfer.files].forEach(processFile);
+});
+
+function processFile(file) {
+  const isImage = file.type.startsWith('image/');
+  const isText  = file.type.startsWith('text/') || file.name.endsWith('.txt') ||
+                  file.name.endsWith('.md') || file.name.endsWith('.json') ||
+                  file.name.endsWith('.py') || file.name.endsWith('.js');
+  if (!isImage && !isText) {
+    alert(`File type not supported: ${file.name}\nSupported: images, .txt, .md, .json, .py, .js`);
+    return;
+  }
+  const reader = new FileReader();
+  if (isImage) {
+    reader.onload = e => {
+      attachments.push({ name: file.name, type: 'image', data: e.target.result });
+      renderChips();
+    };
+    reader.readAsDataURL(file);
+  } else {
+    reader.onload = e => {
+      attachments.push({ name: file.name, type: 'text', data: e.target.result });
+      renderChips();
+    };
+    reader.readAsText(file);
+  }
+}
+
+function renderChips() {
+  attachArea.innerHTML = '';
+  attachments.forEach((a, i) => {
+    const chip = document.createElement('div');
+    chip.className = 'chip';
+    chip.innerHTML = `${a.type === 'image' ? '🖼' : '📄'} ${a.name} <span class="chip-x" onclick="removeAttach(${i})">✕</span>`;
+    attachArea.appendChild(chip);
+  });
+}
+
+function removeAttach(i) {
+  attachments.splice(i, 1);
+  renderChips();
+}
+
+// ── Auto-grow textarea ────────────────────────────────
+const inputEl = document.getElementById('input');
+inputEl.addEventListener('input', () => {
+  inputEl.style.height = 'auto';
+  inputEl.style.height = Math.min(inputEl.scrollHeight, 160) + 'px';
+});
+inputEl.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+});
+
+// ── Send ─────────────────────────────────────────────
+async function sendMessage() {
+  const text = inputEl.value.trim();
+  if (!text && attachments.length === 0) return;
+
+  const sendBtn = document.getElementById('send-btn');
+  sendBtn.disabled = true;
+  inputEl.value = '';
+  inputEl.style.height = 'auto';
+
+  // Build user message content
+  let userDisplay = text;
+  const attachSnap = [...attachments];
+  attachments = [];
+  renderChips();
+
+  // Show user bubble
+  addMessage('user', userDisplay, attachSnap);
+
+  // Show thinking bubble
+  const thinkId = addMessage('ai', '⏳ Thinking...', [], true);
+
+  try {
+    // Build payload
+    const payload = { message: text, history };
+    if (attachSnap.length > 0) {
+      payload.attachments = attachSnap.map(a => ({
+        name: a.name,
+        type: a.type,
+        data: a.data
+      }));
+    }
+
+    const r = await fetch(API + '/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    if (!r.ok) throw new Error(`Server error ${r.status}`);
+    const j = await r.json();
+    const reply = j.response || '(no response)';
+
+    // Remove thinking, add real reply
+    const captured = j.memory_captured || [];
+    removeMessage(thinkId);
+    addMessage('ai', reply, [], false, captured.length > 0);
+
+    // Update history
+    history.push({ role: 'user', content: text });
+    history.push({ role: 'assistant', content: reply });
+    if (history.length > 20) history = history.slice(-20);
+
+  } catch (err) {
+    removeMessage(thinkId);
+    addMessage('ai', '❌ Error: ' + err.message);
+  }
+
+  sendBtn.disabled = false;
+  inputEl.focus();
+}
+
+// ── Minimal markdown renderer ─────────────────────────
+function renderMarkdown(text) {
+  // Escape HTML first on raw text
+  function esc(s) {
+    return String(s)
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+      .replace(/"/g,'&quot;');
+  }
+
+  // Extract and protect code blocks before other processing
+  const codeBlocks = [];
+  let s = String(text).replace(/```([\w]*)\n?([\s\S]*?)```/g, (_, lang, code) => {
+    const idx = codeBlocks.length;
+    codeBlocks.push(`<pre><code>${esc(code.replace(/^\n|\n$/g,''))}</code></pre>`);
+    return `\x00CODE${idx}\x00`;
+  });
+
+  // Inline code
+  const inlineCodes = [];
+  s = s.replace(/`([^`\n]+)`/g, (_, code) => {
+    const idx = inlineCodes.length;
+    inlineCodes.push(`<code>${esc(code)}</code>`);
+    return `\x00INLINE${idx}\x00`;
+  });
+
+  // Headings
+  s = s.replace(/^### (.+)$/gm, (_, t) => `<h3>${esc(t)}</h3>`);
+  s = s.replace(/^## (.+)$/gm,  (_, t) => `<h2>${esc(t)}</h2>`);
+  s = s.replace(/^# (.+)$/gm,   (_, t) => `<h1>${esc(t)}</h1>`);
+
+  // Bold / italic
+  s = s.replace(/\*\*\*(.+?)\*\*\*/g, (_, t) => `<strong><em>${esc(t)}</em></strong>`);
+  s = s.replace(/\*\*(.+?)\*\*/g,     (_, t) => `<strong>${esc(t)}</strong>`);
+  s = s.replace(/\*(.+?)\*/g,         (_, t) => `<em>${esc(t)}</em>`);
+
+  // Unordered lists — collect consecutive bullet lines into <ul>
+  s = s.replace(/(^[ \t]*[-*+] .+$(\n[ \t]*[-*+] .+$)*)/gm, block => {
+    const items = block.split('\n')
+      .map(l => l.replace(/^[ \t]*[-*+] /, '').trim())
+      .filter(Boolean)
+      .map(l => `<li>${l}</li>`)
+      .join('');
+    return `<ul>${items}</ul>`;
+  });
+
+  // Ordered lists
+  s = s.replace(/(^[ \t]*\d+\. .+$(\n[ \t]*\d+\. .+$)*)/gm, block => {
+    const items = block.split('\n')
+      .map(l => l.replace(/^[ \t]*\d+\. /, '').trim())
+      .filter(Boolean)
+      .map(l => `<li>${l}</li>`)
+      .join('');
+    return `<ol>${items}</ol>`;
+  });
+
+  // Escape remaining plain-text lines (not already HTML tags)
+  // Split into lines, escape non-tag lines, then wrap paragraphs
+  const lines = s.split('\n');
+  const out = [];
+  let para = [];
+  const blockTags = /^<(h[1-3]|ul|ol|pre|li)/i;
+
+  function flushPara() {
+    if (para.length) {
+      const joined = para.join(' ').trim();
+      if (joined) out.push(`<p>${joined}</p>`);
+      para = [];
+    }
+  }
+
+  for (const line of lines) {
+    if (blockTags.test(line.trim())) {
+      flushPara();
+      out.push(line);
+    } else if (line.trim() === '') {
+      flushPara();
+    } else {
+      // Escape HTML entities in plain text lines (not already escaped above)
+      // Only escape if line doesn't contain HTML tags we already placed
+      para.push(line.trim().replace(/&(?!amp;|lt;|gt;|quot;)/g, '&amp;'));
+    }
+  }
+  flushPara();
+  s = out.join('\n');
+
+  // Restore inline codes and code blocks
+  s = s.replace(/\x00INLINE(\d+)\x00/g, (_, i) => inlineCodes[+i]);
+  s = s.replace(/\x00CODE(\d+)\x00/g,   (_, i) => codeBlocks[+i]);
+
+  return s;
+}
+
+// ── Message rendering ─────────────────────────────────
+const COLLAPSE_THRESHOLD = 600; // chars — collapse AI responses longer than this
+let msgCounter = 0;
+
+function addMessage(role, text, atts = [], thinking = false, memoryCaptured = false) {
+  const id = 'msg-' + (++msgCounter);
+  const msgs = document.getElementById('messages');
+  const div = document.createElement('div');
+  let cls = `msg ${role}`;
+  if (thinking) cls += ' thinking';
+  if (memoryCaptured) cls += ' memory-captured';
+  div.className = cls;
+  div.id = id;
+
+  const label = role === 'user' ? 'You' : (_modelName || 'AI');
+
+  // Render content: markdown for AI, escaped plain text for user
+  const isAI = role === 'ai';
+  const bubbleContent = isAI && !thinking
+    ? renderMarkdown(text)
+    : escHtml(text);
+
+  // Wrap in collapsible wrapper if AI message is long
+  const needsCollapse = isAI && !thinking && text.length > COLLAPSE_THRESHOLD;
+  const wrapCls = needsCollapse
+    ? `msg-bubble-wrap collapsed`
+    : `msg-bubble-wrap`;
+
+  let bubbleHtml = `<div class="${wrapCls}">` +
+    `<div class="msg-bubble">${bubbleContent}</div>`;
+  if (needsCollapse) {
+    bubbleHtml += `<button class="show-more-btn" onclick="toggleCollapse(this)">▼ Show more</button>`;
+  }
+  bubbleHtml += `</div>`;
+
+  let html = `<div class="msg-label">${label}</div>${bubbleHtml}`;
+
+  if (atts && atts.length > 0) {
+    atts.forEach(a => {
+      if (a.type === 'image') {
+        html += `<div class="attachment-preview"><img src="${a.data}" alt="${escHtml(a.name)}"></div>`;
+      } else {
+        html += `<div class="attachment-preview"><span class="file-tag">📄 ${escHtml(a.name)}</span></div>`;
+      }
+    });
+  }
+
+  if (memoryCaptured) {
+    html += `<div class="memory-tag">🧠 Captured to memory</div>`;
+  }
+
+  div.innerHTML = html;
+  msgs.appendChild(div);
+  msgs.scrollTop = msgs.scrollHeight;
+  return id;
+}
+
+function toggleCollapse(btn) {
+  const wrap = btn.parentElement;
+  const collapsed = wrap.classList.toggle('collapsed');
+  btn.textContent = collapsed ? '▼ Show more' : '▲ Show less';
+}
+
+function removeMessage(id) {
+  const el = document.getElementById(id);
+  if (el) el.remove();
+}
+
+function escHtml(s) {
+  return String(s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;');
+}
+
+// ── Clear ─────────────────────────────────────────────
+function clearChat() {
+  history = [];
+  attachments = [];
+  renderChips();
+  document.getElementById('messages').innerHTML = '';
+}
+
+// ── Init ──────────────────────────────────────────────
+(function init() {
+  checkStatus();
+  setInterval(checkStatus, 8000);
+  inputEl.focus();
+})();
+</script>
+</body>
+</html>
